@@ -1,10 +1,9 @@
-import express, { Request, Response, Router } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { Request, Response } from 'express';
+import { userService } from '../services/userService';
 
-const prisma = new PrismaClient();
+export function post(req: Request, res: Response) {
+  const { email, password } = req.body;
+  const user = userService.login(email, password);
 
-// const router: Router = express.Router();
-
-export const getLogin = (req: Request, res: Response): void => {
-  res.send('Login Page');
-};
+  res.send(JSON.stringify(user));
+}
