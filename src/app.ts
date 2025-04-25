@@ -1,6 +1,6 @@
 import * as dotenv from 'dotenv';
 import userRouter from './routes/user';
-import express, { Application, Request, Response, urlencoded } from 'express';
+import express, { Application, Request, Response } from 'express';
 import cors from 'cors';
 
 dotenv.config();
@@ -20,4 +20,4 @@ app.listen(port, () => {
   console.log(`Working on port ${port}`);
 });
 
-app.post('/login', userRouter);
+app.use(userRouter);
