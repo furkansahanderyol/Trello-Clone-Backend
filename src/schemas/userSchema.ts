@@ -24,6 +24,17 @@ export const userSchema = z
       .refine((val) => /^[a-zA-ZğüşöçıİĞÜŞÖÇ'\s-]+$/.test(val), {
         message: 'Name contains invalid characters.',
       }),
+
+    surname: z
+      .string()
+      .trim()
+      .min(2, 'Surname must be at least 2 characters long.')
+      .refine((val) => !/\d/.test(val), {
+        message: 'Surname cannot contain numbers.',
+      })
+      .refine((val) => /^[a-zA-ZğüşöçıİĞÜŞÖÇ'\s-]+$/.test(val), {
+        message: 'Surname contains invalid characters.',
+      }),
   })
   .refine((data) => data.password === data.passwordConfirm, {
     message: 'Passwords must match.',
