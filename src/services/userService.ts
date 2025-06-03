@@ -22,6 +22,11 @@ export class userService {
   static async register(name: string, surname: string, email: string, password: string) {
     const hashedPassword = bcrypt.hashSync(password, 10);
 
-    return { name: name, surname: surname, email: email, password: hashedPassword };
+    return {
+      name: name,
+      surname: surname,
+      email: email,
+      password: hashedPassword,
+    };
   }
 }
