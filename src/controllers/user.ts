@@ -7,7 +7,8 @@ import nodemailer from 'nodemailer';
 import redis, { redisClient } from '../lib/redis';
 import bcrypt from 'bcrypt';
 import { generateToken } from '../lib/generateToken';
-import jwt, { verify } from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
+import { setTokenCookie } from '../helpers/setTokenCookie';
 
 const prisma = new PrismaClient();
 
@@ -16,6 +17,7 @@ export async function login(req: Request, res: Response) {
 
   const user = await prisma.user.findUnique({ where: { email } });
   const checkPassword = await bcrypt.compare(password, user?.password || '');
+  const accessToken = generateToken(email, process.env.JWT_ACCESS_TOKEN_SECRET!, '7d');
 
   if (!checkPassword) {
     res.status(400).json({ message: 'Invalid email or password.' });
@@ -27,7 +29,8 @@ export async function login(req: Request, res: Response) {
     return;
   }
 
-  res.json(200).json({ message: 'Welcome back.' });
+  res.status(200).json({ message: 'Welcome back.' });
+  setTokenCookie(res, accessToken);
 }
 
 export async function register(req: Request, res: Response): Promise<void> {
@@ -62,15 +65,16 @@ export async function register(req: Request, res: Response): Promise<void> {
     const newUser = await prisma.user.create({
       data: user,
     });
-    const verifyToken = generateToken(email, process.env.JWT_VERIFY_TOKEN_SECRET!, '1h');
+    const verifyToken = generateToken({ email: email, isVerified: false }, process.env.JWT_ACCESS_TOKEN_SECRET!, '7d');
 
     sendVerificationCode(email);
 
+    setTokenCookie(res, verifyToken);
     res.status(201).json({
-      token: verifyToken,
       message: 'Registration successful! Please verify your email for access all the features.',
       user: newUser,
     });
+
     return;
   } catch (error) {
     console.error('Register-Error ->', error);
@@ -79,10 +83,16 @@ export async function register(req: Request, res: Response): Promise<void> {
 }
 
 export async function registerSuccess(req: Request, res: Response) {
-  const token = req.headers.authorization?.split(' ')[1];
+  const token = req.cookies['access-token'];
+
   const { email, code } = req.body;
   const redisKey = `verify:${email}`;
   const storedCode = await redisClient.get(redisKey);
+
+  if (!token) {
+    res.status(400).json({ message: 'Invalid token.' });
+    return;
+  }
 
   if (!storedCode) {
     res.status(400).json({ message: 'Your verify code is expired. Please request a new code.' });
@@ -94,8 +104,14 @@ export async function registerSuccess(req: Request, res: Response) {
     return;
   }
 
+  let payload;
+
   if (token) {
-    const payload = jwt.verify(token, process.env.JWT_VERIFY_TOKEN_SECRET!);
+    try {
+      payload = jwt.verify(token, process.env.JWT_ACCESS_TOKEN_SECRET!);
+    } catch (error) {
+      res.status(403).json({ message: 'Invalid or expired authorization token.' });
+    }
 
     if (!payload) {
       res.status(403).json({ message: 'Authorization token must be provided.' });
@@ -110,7 +126,11 @@ export async function registerSuccess(req: Request, res: Response) {
         },
       });
 
+      const accessToken = generateToken({ email: email, isVerified: true }, process.env.JWT_ACCESS_TOKEN_SECRET!, '7d');
+
+      setTokenCookie(res, accessToken);
       res.status(200).json({ message: 'Your account is verified successfully.' });
+      await redisClient.del(redisKey);
       return;
     }
   }
