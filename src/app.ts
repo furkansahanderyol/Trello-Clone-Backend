@@ -1,6 +1,6 @@
 import * as dotenv from 'dotenv';
 import userRouter from './routes/user';
-import express, { Application, Request, Response } from 'express';
+import express, { Application } from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 
@@ -18,10 +18,6 @@ app.use(
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(cookieParser());
-
-app.get('/', (req: Request, res: Response) => {
-  res.send('Hello World');
-});
 
 app.listen(port, () => {
   console.log(`Working on port ${port}`);

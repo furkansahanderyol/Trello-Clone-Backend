@@ -12,12 +12,22 @@ import { setTokenCookie } from '../helpers/setTokenCookie';
 
 const prisma = new PrismaClient();
 
+interface CustomJwtPayload extends jwt.JwtPayload {
+  email: string;
+  isVerified: boolean;
+}
+
 export async function login(req: Request, res: Response) {
   const { email, password } = req.body;
 
   const user = await prisma.user.findUnique({ where: { email } });
   const checkPassword = await bcrypt.compare(password, user?.password || '');
-  const accessToken = generateToken(email, process.env.JWT_ACCESS_TOKEN_SECRET!, '7d');
+
+  const accessToken = generateToken(
+    { email: email, isVerified: user?.isVerified! },
+    process.env.JWT_ACCESS_TOKEN_SECRET!,
+    '7d',
+  );
 
   if (!checkPassword) {
     res.status(400).json({ message: 'Invalid email or password.' });
@@ -29,8 +39,8 @@ export async function login(req: Request, res: Response) {
     return;
   }
 
-  res.status(200).json({ message: 'Welcome back.' });
   setTokenCookie(res, accessToken);
+  res.status(200).json({ message: 'Welcome back.' });
 }
 
 export async function register(req: Request, res: Response): Promise<void> {
@@ -151,6 +161,18 @@ export async function resendVerificationCode(req: Request, res: Response) {
   res.status(200).json({ message: 'New verification code sent to your email.' });
 }
 
+export async function logout(req: Request, res: Response) {
+  res.cookie('access-token', '', {
+    httpOnly: true,
+    secure: false,
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 0,
+  });
+
+  res.status(201).json({ message: 'Logout successful.' });
+}
+
 async function sendVerificationCode(email: string) {
   const code = generateCode();
   const key = `verify:${email}`;
@@ -173,4 +195,37 @@ async function sendVerificationCode(email: string) {
     subject: 'Verification Code',
     text: `Your verification code is: ${code}`,
   });
+}
+
+export async function checkVerified(req: Request, res: Response) {
+  const token = req.cookies['access-token'];
+
+  if (!token) {
+    res.status(403).json({ message: 'No token provided.' });
+
+    return;
+  }
+
+  try {
+    const payload = jwt.verify(token, process.env.JWT_ACCESS_TOKEN_SECRET!) as CustomJwtPayload;
+    const isVerified = payload.isVerified;
+
+    const user = await prisma.user.findUnique({ where: { email: payload.email } });
+
+    if (!user) {
+      res.status(403).json({ message: 'Invalid user.' });
+      return;
+    }
+
+    if (isVerified) {
+      res.status(203).json({ redirectTo: '/dashboard' });
+      return;
+    } else {
+      res.status(203).json({ redirectTo: `/auth/register-success?email=${user.email}` });
+      return;
+    }
+  } catch (error) {
+    res.status(403).json({ message: 'Invalid or expired token.' });
+    return;
+  }
 }
