@@ -1,5 +1,4 @@
 import bcrypt from 'bcrypt';
-import { boolean } from 'zod';
 
 export class userService {
   name: string;

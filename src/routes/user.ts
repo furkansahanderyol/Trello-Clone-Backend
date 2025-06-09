@@ -1,5 +1,14 @@
 import { Router } from 'express';
-import { checkVerified, login, logout, register, registerSuccess, resendVerificationCode } from '../controllers/user';
+import {
+  authGoogle,
+  checkVerified,
+  login,
+  logout,
+  register,
+  registerSuccess,
+  resendVerificationCode,
+} from '../controllers/user';
+import passport from '../config/passport';
 
 const router: Router = Router();
 
@@ -9,5 +18,15 @@ router.post('/register-success', registerSuccess);
 router.post('/resend-verification', resendVerificationCode);
 router.post('/logout', logout);
 router.get('/check-verified', checkVerified);
+
+// Sends user to the select their mail.
+router.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+
+// Works when user selects its mail.
+router.get(
+  '/auth/google/callback',
+  passport.authenticate('google', { failureRedirect: '/login', session: false }),
+  authGoogle,
+);
 
 export default router;

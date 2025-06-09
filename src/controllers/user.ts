@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { userService } from '../services/userService';
 import { userSchema } from '../schemas/userSchema';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, User } from '@prisma/client';
 import { generateCode } from '../helpers/generateCode';
 import nodemailer from 'nodemailer';
 import redis, { redisClient } from '../lib/redis';
@@ -9,6 +9,7 @@ import bcrypt from 'bcrypt';
 import { generateToken } from '../lib/generateToken';
 import jwt from 'jsonwebtoken';
 import { setTokenCookie } from '../helpers/setTokenCookie';
+import passport from 'passport';
 
 const prisma = new PrismaClient();
 
@@ -228,4 +229,14 @@ export async function checkVerified(req: Request, res: Response) {
     res.status(403).json({ message: 'Invalid or expired token.' });
     return;
   }
+}
+
+export async function authGoogle(req: Request, res: Response) {
+  const user = req.user as User;
+
+  const cookie = generateToken({ email: user.email, isVerified: true }, process.env.JWT_ACCESS_TOKEN_SECRET!, '7d');
+
+  setTokenCookie(res, cookie);
+
+  res.redirect('http://localhost:3000/dashboard');
 }

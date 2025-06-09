@@ -10,12 +10,14 @@ datasource db {
 model User {
   id         String        @id @default(uuid())
   email      String        @unique
-  password   String
+  password   String?
   name       String
   surname    String
   isVerified Boolean       @default(false)
   boards     BoardMember[]
   tasks      Task[]
+  provider   String        @default("credentials")
+  googleId   String?       @unique 
 }
 
 model Board {
