@@ -18,6 +18,7 @@ model User {
   tasks      Task[]
   provider   String        @default("credentials")
   googleId   String?       @unique 
+  profileImage String?
 }
 
 model Board {

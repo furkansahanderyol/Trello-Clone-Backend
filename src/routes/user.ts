@@ -2,6 +2,7 @@ import { Router } from 'express';
 import {
   authGoogle,
   checkVerified,
+  getUser,
   login,
   logout,
   register,
@@ -18,6 +19,7 @@ router.post('/register-success', registerSuccess);
 router.post('/resend-verification', resendVerificationCode);
 router.post('/logout', logout);
 router.get('/check-verified', checkVerified);
+router.get('/get-user', getUser);
 
 // Sends user to the select their mail.
 router.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));

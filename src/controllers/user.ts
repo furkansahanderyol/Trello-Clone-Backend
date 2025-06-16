@@ -9,7 +9,6 @@ import bcrypt from 'bcrypt';
 import { generateToken } from '../lib/generateToken';
 import jwt from 'jsonwebtoken';
 import { setTokenCookie } from '../helpers/setTokenCookie';
-import passport from 'passport';
 
 const prisma = new PrismaClient();
 
@@ -41,7 +40,9 @@ export async function login(req: Request, res: Response) {
   }
 
   setTokenCookie(res, accessToken);
-  res.status(200).json({ message: 'Welcome back.' });
+  res.status(200).json({
+    message: 'Welcome back.',
+  });
 }
 
 export async function register(req: Request, res: Response): Promise<void> {
@@ -239,4 +240,38 @@ export async function authGoogle(req: Request, res: Response) {
   setTokenCookie(res, cookie);
 
   res.redirect('http://localhost:3000/dashboard');
+}
+
+export async function getUser(req: Request, res: Response) {
+  const token = req.cookies['access-token'];
+
+  if (!token) {
+    res.status(403).json({ message: 'No token provided.' });
+
+    return;
+  }
+
+  try {
+    const payload = jwt.verify(token, process.env.JWT_ACCESS_TOKEN_SECRET!) as CustomJwtPayload;
+    const user = await prisma.user.findUnique({ where: { email: payload.email } });
+
+    if (!user) {
+      res.status(403).json({ message: 'User cannot be found.' });
+      return;
+    }
+
+    res.status(201).json({
+      user: {
+        name: user.name,
+        surname: user.surname,
+        email: user.email,
+        profileImage: user.profileImage,
+      },
+    });
+
+    return;
+  } catch (error) {
+    res.status(403).json({ message: 'Invalid or expired token.' });
+    return;
+  }
 }
