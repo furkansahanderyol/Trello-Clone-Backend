@@ -6,11 +6,19 @@ import cookieParser from 'cookie-parser';
 import './config/passport';
 import session from 'express-session';
 import passport from './config/passport';
+import fs from 'fs';
+import path from 'path';
 
 dotenv.config();
 
 const app: Application = express();
 const port = 8000;
+
+const uploadDir = path.join(process.cwd(), 'uploads');
+
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
 
 app.use(
   cors({
@@ -30,6 +38,11 @@ app.use(
     saveUninitialized: false,
   }),
 );
+
+// Sends file to the browser
+const uploadsPath = path.resolve(process.cwd(), 'uploads');
+app.use('/uploads', express.static(uploadsPath));
+
 app.use(passport.initialize());
 app.use(passport.session());
 

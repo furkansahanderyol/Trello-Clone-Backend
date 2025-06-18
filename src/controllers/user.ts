@@ -275,3 +275,35 @@ export async function getUser(req: Request, res: Response) {
     return;
   }
 }
+
+export async function updateProfileImage(req: Request, res: Response) {
+  try {
+    const file = req.file;
+
+    if (!file) {
+      res.status(400).json({ message: 'Upload failed.' });
+      return;
+    }
+
+    const token = req.cookies['access-token'];
+    const payload = jwt.verify(token, process.env.JWT_ACCESS_TOKEN_SECRET!) as CustomJwtPayload;
+    const user = await prisma.user.findUnique({ where: { email: payload.email } });
+
+    if (!user) {
+      res.status(400).json({ message: 'Invalid user.' });
+      return;
+    }
+
+    // Edits the url.
+    const profileImagePath = file.path.replace(/\\/g, '/');
+
+    await prisma.user.update({
+      where: { email: user.email },
+      data: { profileImage: profileImagePath },
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error.' });
+    return;
+  }
+}

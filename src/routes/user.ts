@@ -8,8 +8,10 @@ import {
   register,
   registerSuccess,
   resendVerificationCode,
+  updateProfileImage,
 } from '../controllers/user';
 import passport from '../config/passport';
+import upload from '../middlewares/upload';
 
 const router: Router = Router();
 
@@ -30,5 +32,7 @@ router.get(
   passport.authenticate('google', { failureRedirect: '/login', session: false }),
   authGoogle,
 );
+
+router.post('/upload-profile-image', upload.single('profileImage'), updateProfileImage);
 
 export default router;
