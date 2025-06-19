@@ -9,6 +9,7 @@ import bcrypt from 'bcrypt';
 import { generateToken } from '../lib/generateToken';
 import jwt from 'jsonwebtoken';
 import { setTokenCookie } from '../helpers/setTokenCookie';
+import { changePasswordSchema } from '../schemas/changePasswordSchema';
 
 const prisma = new PrismaClient();
 
@@ -305,5 +306,58 @@ export async function updateProfileImage(req: Request, res: Response) {
     console.error(error);
     res.status(500).json({ message: 'Server error.' });
     return;
+  }
+}
+
+export async function changePassword(req: Request, res: Response) {
+  const token = req.cookies['access-token'];
+  const payload = jwt.verify(token, process.env.JWT_ACCESS_TOKEN_SECRET!) as CustomJwtPayload;
+  const user = await prisma.user.findUnique({ where: { email: payload.email } });
+
+  const result = changePasswordSchema.safeParse(req.body);
+
+  if (!result.success) {
+    res.status(400).json({
+      errors: result.error.flatten().fieldErrors,
+    });
+
+    return;
+  }
+
+  const { currentPassword, newPassword, newPasswordConfirm } = result.data;
+
+  try {
+    if (!user) {
+      res.status(500).json({ message: 'Invalid user.' });
+      return;
+    }
+
+    if (!currentPassword || !newPassword || !newPasswordConfirm) {
+      res.status(400).json({ message: 'All fields should be provided.' });
+      return;
+    }
+
+    if (user?.password === currentPassword) {
+      res.status(400).json('New password must be different from current password.');
+      return;
+    }
+
+    if (newPassword !== newPasswordConfirm) {
+      res.status(400).json({ message: 'Passwords must match.' });
+      return;
+    }
+
+    await prisma.user.update({
+      where: { email: user.email },
+      data: {
+        password: newPassword,
+      },
+    });
+
+    res.status(200).json({ message: 'Password updated successfully.' });
+    return;
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
   }
 }
