@@ -350,7 +350,7 @@ export async function changePassword(req: Request, res: Response) {
     await prisma.user.update({
       where: { email: user.email },
       data: {
-        password: newPassword,
+        password: bcrypt.hashSync(newPassword, 10),
       },
     });
 
