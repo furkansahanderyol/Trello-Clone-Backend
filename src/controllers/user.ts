@@ -155,7 +155,11 @@ export async function resendVerificationCode(req: Request, res: Response) {
   const isCodeExisting = await redisClient.get(redisKey);
 
   if (isCodeExisting) {
-    res.status(400).json({ message: 'Please wait before requesting a new code. Try again in a few minutes.' });
+    const ttl = await redisClient.ttl(redisKey);
+
+    res
+      .status(400)
+      .json({ message: 'Please wait before requesting a new code. Try again in a few minutes.', remainingTime: ttl });
     return;
   }
 
