@@ -8,45 +8,79 @@ datasource db {
 }
 
 model User {
-  id         String        @id @default(uuid())
-  email      String        @unique
-  password   String?
-  name       String
-  surname    String
-  isVerified Boolean       @default(false)
-  boards     BoardMember[]
-  tasks      Task[]
-  provider   String        @default("credentials")
-  googleId   String?       @unique 
+  id           String  @id @default(uuid())
+  email        String  @unique
+  password     String?
+  name         String
+  surname      String
+  isVerified   Boolean @default(false)
+  provider     String  @default("credentials")
+  googleId     String? @unique
   profileImage String?
+
+  boards       BoardMember[]
+  tasks        Task[]
+  workspaces   WorkspaceMember[]
+  createdWorkspaces Workspace[] @relation("CreatedWorkspaces")
+}
+
+model Workspace {
+  id         String   @id @default(uuid())
+  name       String
+  color      String
+  createdAt  DateTime @default(now())
+  createdBy  String
+
+  creator    User     @relation("CreatedWorkspaces", fields: [createdBy], references: [id])
+  members    WorkspaceMember[]
+  boards     Board[]
+}
+
+model WorkspaceMember {
+  id          String    @id @default(uuid())
+  workspaceId String
+  userId      String
+  role        String    @default("member")
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  user        User      @relation(fields: [userId], references: [id])
+
+  @@unique([workspaceId, userId])
 }
 
 model Board {
-  id        String        @id @default(uuid())
-  title     String
-  createdAt DateTime      @default(now())
-  members   BoardMember[]
-  tasks     Task[]
+  id          String   @id @default(uuid())
+  title       String
+  createdAt   DateTime @default(now())
+  
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+
+  members     BoardMember[]
+  tasks       Task[]
 }
 
 model BoardMember {
-  id      String @id @default(uuid())
-  userId  String
-  boardId String
-  role    String @default("member")
-  board   Board  @relation(fields: [boardId], references: [id])
-  user    User   @relation(fields: [userId], references: [id])
+  id       String @id @default(uuid())
+  userId   String
+  boardId  String
+  role     String @default("member")
+
+  user     User  @relation(fields: [userId], references: [id])
+  board    Board @relation(fields: [boardId], references: [id])
 
   @@unique([userId, boardId])
 }
 
 model Task {
-  id           String   @id @default(uuid())
-  title        String
-  boardId      String
-  assignedToId String?
-  updatedAt    DateTime @updatedAt
-  createdAt    DateTime @default(now())
-  assignedTo   User?    @relation(fields: [assignedToId], references: [id])
-  board        Board    @relation(fields: [boardId], references: [id])
+  id            String   @id @default(uuid())
+  title         String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  boardId       String
+  assignedToId  String?
+
+  board         Board @relation(fields: [boardId], references: [id])
+  assignedTo    User? @relation(fields: [assignedToId], references: [id])
 }
