@@ -44,9 +44,21 @@ export async function createWorkspace(req: Request, res: Response) {
           },
         },
       },
+      include: { members: true },
     });
 
-    res.status(201).json({ message: 'Workspace created successfully', workspace: newWorkspace });
+    const workspaceMemberWithWorkspace = newWorkspace.members.map((member) => ({
+      ...member,
+      workspace: {
+        id: newWorkspace.id,
+        name: newWorkspace.name,
+        color: newWorkspace.color,
+        createdAt: newWorkspace.createdAt,
+        createdBy: newWorkspace.createdBy,
+      },
+    }));
+
+    res.status(201).json({ message: 'Workspace created successfully', workspace: workspaceMemberWithWorkspace });
     return;
   } catch (error) {
     res.status(403).json({ message: 'Invalid or expired authorization token.' });
