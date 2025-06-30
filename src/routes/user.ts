@@ -13,7 +13,7 @@ import {
 } from '../controllers/user';
 import passport from '../config/passport';
 import upload from '../middlewares/upload';
-import { createWorkspace, getAllWorkspaces } from '../controllers/workspace';
+import { createWorkspace, getAllWorkspaces, getWorkspace } from '../controllers/workspace';
 
 const router: Router = Router();
 
@@ -42,5 +42,6 @@ router.post('/upload-profile-image', upload.single('profileImage'), updateProfil
 // Workspace endpoints
 router.get('/get-all-workspaces', getAllWorkspaces);
 router.post('/create-workspace', createWorkspace);
+router.get('/get-workspace/:id', getWorkspace);
 
 export default router;

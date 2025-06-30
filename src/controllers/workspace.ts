@@ -97,3 +97,29 @@ export async function getAllWorkspaces(req: Request, res: Response) {
     return;
   }
 }
+
+export async function getWorkspace(req: Request, res: Response) {
+  const { id } = req.params;
+  const token = req.cookies['access-token'];
+
+  if (!token) {
+    res.status(400).json({ message: 'Invalid user.' });
+    return;
+  }
+
+  if (!id) {
+    res.status(404).json({ message: 'Workspace cannot found.' });
+    return;
+  }
+
+  const workspaceData = await prisma.workspace.findUnique({
+    where: { id: id },
+  });
+
+  if (!workspaceData) {
+    res.status(404).json({ message: 'Workspace cannot found.' });
+  }
+
+  res.status(200).json(workspaceData);
+  return;
+}
