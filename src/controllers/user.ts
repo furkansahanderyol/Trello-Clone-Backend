@@ -119,33 +119,31 @@ export async function registerSuccess(req: Request, res: Response) {
 
   let payload;
 
-  if (token) {
-    try {
-      payload = jwt.verify(token, process.env.JWT_ACCESS_TOKEN_SECRET!);
-    } catch (error) {
-      res.status(403).json({ message: 'Invalid or expired authorization token.' });
-    }
+  try {
+    payload = jwt.verify(token, process.env.JWT_ACCESS_TOKEN_SECRET!);
+  } catch (error) {
+    res.status(403).json({ message: 'Invalid or expired authorization token.' });
+  }
 
-    if (!payload) {
-      res.status(403).json({ message: 'Authorization token must be provided.' });
-      return;
-    }
+  if (!payload) {
+    res.status(403).json({ message: 'Authorization token must be provided.' });
+    return;
+  }
 
-    if (payload && code === storedCode) {
-      await prisma.user.update({
-        where: { email },
-        data: {
-          isVerified: true,
-        },
-      });
+  if (payload && code === storedCode) {
+    await prisma.user.update({
+      where: { email },
+      data: {
+        isVerified: true,
+      },
+    });
 
-      const accessToken = generateToken({ email: email, isVerified: true }, process.env.JWT_ACCESS_TOKEN_SECRET!, '7d');
+    const accessToken = generateToken({ email: email, isVerified: true }, process.env.JWT_ACCESS_TOKEN_SECRET!, '7d');
 
-      setTokenCookie(res, accessToken);
-      res.status(200).json({ message: 'Your account is verified successfully.' });
-      await redisClient.del(redisKey);
-      return;
-    }
+    setTokenCookie(res, accessToken);
+    res.status(200).json({ message: 'Your account is verified successfully.' });
+    await redisClient.del(redisKey);
+    return;
   }
 }
 

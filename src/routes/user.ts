@@ -14,6 +14,7 @@ import {
 import passport from '../config/passport';
 import upload from '../middlewares/upload';
 import { createWorkspace, getAllWorkspaces, getWorkspace } from '../controllers/workspace';
+import { createBoard } from '../controllers/board';
 
 const router: Router = Router();
 
@@ -43,5 +44,8 @@ router.post('/upload-profile-image', upload.single('profileImage'), updateProfil
 router.get('/get-all-workspaces', getAllWorkspaces);
 router.post('/create-workspace', createWorkspace);
 router.get('/get-workspace/:id', getWorkspace);
+
+// Board endpoints
+router.post('/create-board', createBoard);
 
 export default router;
