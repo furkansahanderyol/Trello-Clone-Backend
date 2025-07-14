@@ -14,7 +14,7 @@ import {
 import passport from '../config/passport';
 import upload from '../middlewares/upload';
 import { createWorkspace, getAllWorkspaces, getWorkspace } from '../controllers/workspace';
-import { createBoard } from '../controllers/board';
+import { createBoard, getAllBoards } from '../controllers/board';
 
 const router: Router = Router();
 
@@ -46,6 +46,7 @@ router.post('/create-workspace', createWorkspace);
 router.get('/get-workspace/:id', getWorkspace);
 
 // Board endpoints
+router.get('/boards/:workspaceId', getAllBoards);
 router.post('/create-board', createBoard);
 
 export default router;
