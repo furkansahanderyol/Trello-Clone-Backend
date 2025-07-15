@@ -24,7 +24,13 @@ export async function login(req: Request, res: Response) {
   const user = await prisma.user.findUnique({ where: { email } });
   const checkPassword = await bcrypt.compare(password, user?.password || '');
 
+  if (!user) {
+    res.status(403).json({ message: 'User cannot be found.' });
+    return;
+  }
+
   const accessToken = generateToken(
+    user?.id,
     { email: email, isVerified: user?.isVerified! },
     process.env.JWT_ACCESS_TOKEN_SECRET!,
     '7d',
@@ -78,7 +84,12 @@ export async function register(req: Request, res: Response): Promise<void> {
     const newUser = await prisma.user.create({
       data: user,
     });
-    const verifyToken = generateToken({ email: email, isVerified: false }, process.env.JWT_ACCESS_TOKEN_SECRET!, '7d');
+    const verifyToken = generateToken(
+      newUser.id,
+      { email: email, isVerified: false },
+      process.env.JWT_ACCESS_TOKEN_SECRET!,
+      '7d',
+    );
 
     sendVerificationCode(email);
 
@@ -101,6 +112,12 @@ export async function registerSuccess(req: Request, res: Response) {
   const { email, code } = req.body;
   const redisKey = `verify:${email}`;
   const storedCode = await redisClient.get(redisKey);
+  const user = await prisma.user.findUnique({ where: { email } });
+
+  if (!user) {
+    res.status(403).json({ message: 'User cannot be found.' });
+    return;
+  }
 
   if (!token) {
     res.status(400).json({ message: 'Invalid token.' });
@@ -138,7 +155,12 @@ export async function registerSuccess(req: Request, res: Response) {
       },
     });
 
-    const accessToken = generateToken({ email: email, isVerified: true }, process.env.JWT_ACCESS_TOKEN_SECRET!, '7d');
+    const accessToken = generateToken(
+      user?.id,
+      { email: email, isVerified: true },
+      process.env.JWT_ACCESS_TOKEN_SECRET!,
+      '7d',
+    );
 
     setTokenCookie(res, accessToken);
     res.status(200).json({ message: 'Your account is verified successfully.' });
@@ -238,7 +260,12 @@ export async function checkVerified(req: Request, res: Response) {
 export async function authGoogle(req: Request, res: Response) {
   const user = req.user as User;
 
-  const cookie = generateToken({ email: user.email, isVerified: true }, process.env.JWT_ACCESS_TOKEN_SECRET!, '7d');
+  const cookie = generateToken(
+    user.id,
+    { email: user.email, isVerified: true },
+    process.env.JWT_ACCESS_TOKEN_SECRET!,
+    '7d',
+  );
 
   setTokenCookie(res, cookie);
 

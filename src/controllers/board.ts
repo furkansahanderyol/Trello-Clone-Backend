@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 
 export async function getAllBoards(req: Request, res: Response) {
   const token = req.cookies['access-token'];
-  const payload = jwt.verify(token, process.env.JWT_ACCESS_TOKEN_SECRET!);
+  const payload = jwt.verify(token, process.env.JWT_ACCESS_TOKEN_SECRET!) as { id: string };
 
   const { workspaceId } = req.params;
 
@@ -27,7 +27,14 @@ export async function getAllBoards(req: Request, res: Response) {
 
   try {
     const boards = await prisma.workspace.findUnique({
-      where: { id: workspaceId },
+      where: {
+        id: workspaceId,
+        members: {
+          some: {
+            userId: payload.id,
+          },
+        },
+      },
       include: {
         boards: {
           include: {
@@ -37,6 +44,12 @@ export async function getAllBoards(req: Request, res: Response) {
         },
       },
     });
+
+    if (!boards) {
+      res.status(403).json({ message: 'Boards cannot be found.' });
+      return;
+    }
+
     res.status(200).json({ boards: boards?.boards });
   } catch (error) {
     console.error(error);

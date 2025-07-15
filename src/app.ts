@@ -12,8 +12,6 @@ import path from 'path';
 dotenv.config();
 
 const app: Application = express();
-const port = 8000;
-
 const uploadDir = path.join(process.cwd(), 'uploads');
 
 if (!fs.existsSync(uploadDir)) {
@@ -46,8 +44,6 @@ app.use('/uploads', express.static(uploadsPath));
 app.use(passport.initialize());
 app.use(passport.session());
 
-app.listen(port, () => {
-  console.log(`Working on port ${port}`);
-});
-
 app.use(userRouter);
+
+export default app;
