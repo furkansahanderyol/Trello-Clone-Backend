@@ -1,5 +1,8 @@
 import { Server } from 'socket.io';
 import http from 'http';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 export default function setupWebSocketServer(server: http.Server) {
   const io = new Server(server, {
@@ -10,12 +13,29 @@ export default function setupWebSocketServer(server: http.Server) {
   });
 
   io.on('connection', (socket) => {
-    console.log('a user connected');
+    socket.on('connect', () => {
+      console.log('a user connected');
+    });
 
-    socket.on('send_text', (text: string) => {
-      console.log(`Incoming Message: ${text}`);
+    socket.on('update_board', async (message) => {
+      const parsedMessage = JSON.parse(message);
+      const workspace = await prisma.workspace.findFirst({
+        where: {
+          id: parsedMessage.id,
+        },
+        include: {
+          boards: {
+            include: {
+              members: true,
+              tasks: true,
+            },
+          },
+        },
+      });
 
-      socket.broadcast.emit('receive_text', text);
+      if (workspace) {
+        socket.broadcast.emit('board_updated', workspace?.boards);
+      }
     });
   });
 }
