@@ -21,7 +21,7 @@ export default function setupWebSocketServer(server: http.Server) {
       const parsedMessage = JSON.parse(message);
       const workspace = await prisma.workspace.findFirst({
         where: {
-          id: parsedMessage.id,
+          id: parsedMessage.workspaceId,
         },
         include: {
           boards: {
@@ -34,7 +34,7 @@ export default function setupWebSocketServer(server: http.Server) {
       });
 
       if (workspace) {
-        socket.broadcast.emit('board_updated', workspace?.boards);
+        io.emit('board_updated', workspace?.boards);
       }
     });
   });
