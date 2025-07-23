@@ -52,6 +52,7 @@ model Board {
   id          String   @id @default(uuid())
   title       String
   createdAt   DateTime @default(now())
+  order       Int
   
   workspaceId String
   workspace   Workspace @relation(fields: [workspaceId], references: [id])
@@ -77,6 +78,7 @@ model Task {
   title         String
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  order         Int
 
   boardId       String
   assignedToId  String?

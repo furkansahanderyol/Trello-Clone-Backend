@@ -38,8 +38,15 @@ export async function getAllBoards(req: Request, res: Response) {
       include: {
         boards: {
           include: {
-            tasks: true,
+            tasks: {
+              orderBy: {
+                order: 'asc',
+              },
+            },
             members: true,
+          },
+          orderBy: {
+            order: 'asc',
           },
         },
       },
@@ -85,12 +92,21 @@ export async function createBoard(req: Request, res: Response) {
     return;
   }
 
-  const newBoard = {
-    workspaceId: workspaceId,
-    title: title,
-  };
-
   try {
+    const lastBoard = await prisma.board.findFirst({
+      orderBy: {
+        order: 'desc',
+      },
+    });
+
+    const nextOrder = lastBoard ? lastBoard.order + 1 : 0;
+
+    const newBoard = {
+      workspaceId: workspaceId,
+      title: title,
+      order: nextOrder,
+    };
+
     await prisma.board.create({
       data: { ...newBoard },
     });
@@ -149,10 +165,19 @@ export async function addTask(req: Request, res: Response) {
   }
 
   try {
+    const lastTask = await prisma.task.findFirst({
+      orderBy: {
+        order: 'desc',
+      },
+    });
+
+    const nextOrder = lastTask ? lastTask.order + 1 : 0;
+
     await prisma.task.create({
       data: {
         title: title,
         boardId: boardId,
+        order: nextOrder,
       },
     });
     res.status(200).json({ message: 'Board updated.' });
