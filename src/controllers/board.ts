@@ -1,8 +1,27 @@
-import { PrismaClient } from '@prisma/client';
+import { Board, BoardMember, PrismaClient, Task } from '@prisma/client';
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 
 const prisma = new PrismaClient();
+
+interface IncomingTask {
+  id: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+  order: number;
+  boardId: string;
+  assignedToId: string | null;
+}
+
+interface IncomingBoard {
+  id: string;
+  title: string;
+  createdAt: string;
+  order: number;
+  workspaceId: string;
+  tasks: IncomingTask[];
+}
 
 export async function getAllBoards(req: Request, res: Response) {
   const token = req.cookies['access-token'];
@@ -122,7 +141,7 @@ export async function updateBoard(req: Request, res: Response) {
   const token = req.cookies['access-token'];
   const payload = jwt.verify(token, process.env.JWT_ACCESS_TOKEN_SECRET!);
 
-  const { workspaceId, boards } = req.body;
+  const { workspaceId, taskId, previousBoardId, newBoardId, oldIndex, newIndex } = req.body;
 
   if (!token) {
     res.status(400).json({ message: 'Invalid token.' });
@@ -140,7 +159,113 @@ export async function updateBoard(req: Request, res: Response) {
   }
 
   try {
-  } catch {}
+    if (previousBoardId === newBoardId) {
+      if (oldIndex !== newIndex) {
+        if (oldIndex < newIndex) {
+          await prisma.task.updateMany({
+            where: {
+              boardId: previousBoardId,
+              order: {
+                gt: oldIndex,
+                lte: newIndex,
+              },
+            },
+            data: {
+              order: { decrement: 1 },
+            },
+          });
+        } else {
+          await prisma.task.updateMany({
+            where: {
+              boardId: previousBoardId,
+              order: {
+                gte: newIndex,
+                lt: oldIndex,
+              },
+            },
+            data: {
+              order: { increment: 1 },
+            },
+          });
+        }
+
+        await prisma.task.update({
+          where: { id: taskId },
+          data: { order: newIndex },
+        });
+      }
+    } else {
+      const newListCurrentCount = await prisma.task.count({
+        where: { boardId: newBoardId },
+      });
+
+      const targetIndex = Math.min(newIndex, newListCurrentCount);
+      await prisma.task.updateMany({
+        where: {
+          boardId: previousBoardId,
+          order: {
+            gt: oldIndex,
+          },
+        },
+        data: {
+          order: { decrement: 1 },
+        },
+      });
+
+      await prisma.task.updateMany({
+        where: {
+          boardId: newBoardId,
+          order: {
+            gte: targetIndex,
+          },
+        },
+        data: {
+          order: { increment: 1 },
+        },
+      });
+
+      await prisma.task.update({
+        where: { id: taskId },
+        data: {
+          boardId: newBoardId,
+          order: targetIndex,
+        },
+      });
+
+      const oldListTasks = await prisma.task.findMany({
+        where: { boardId: previousBoardId },
+        orderBy: { order: 'asc' },
+      });
+
+      for (let i = 0; i < oldListTasks.length; i++) {
+        if (oldListTasks[i].order !== i) {
+          await prisma.task.update({
+            where: { id: oldListTasks[i].id },
+            data: { order: i },
+          });
+        }
+      }
+
+      const newListTasks = await prisma.task.findMany({
+        where: { boardId: newBoardId },
+        orderBy: { order: 'asc' },
+      });
+
+      for (let i = 0; i < newListTasks.length; i++) {
+        if (newListTasks[i].order !== i) {
+          await prisma.task.update({
+            where: { id: newListTasks[i].id },
+            data: { order: i },
+          });
+        }
+      }
+    }
+
+    res.status(200).json({ message: 'Task moved and reordered successfully.' });
+  } catch (error) {
+    console.error(error);
+    res.status(400).json({ error: error });
+  }
 }
 
 export async function addTask(req: Request, res: Response) {
@@ -166,6 +291,9 @@ export async function addTask(req: Request, res: Response) {
 
   try {
     const lastTask = await prisma.task.findFirst({
+      where: {
+        boardId: boardId,
+      },
       orderBy: {
         order: 'desc',
       },

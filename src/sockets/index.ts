@@ -27,7 +27,14 @@ export default function setupWebSocketServer(server: http.Server) {
           boards: {
             include: {
               members: true,
-              tasks: true,
+              tasks: {
+                orderBy: {
+                  order: 'asc',
+                },
+              },
+            },
+            orderBy: {
+              order: 'asc',
             },
           },
         },
