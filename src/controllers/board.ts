@@ -303,6 +303,67 @@ export async function updateBoardTasks(req: Request, res: Response) {
   }
 }
 
+export async function updateBoardOrders(req: Request, res: Response) {
+  const token = req.cookies['access-token'];
+  const payload = jwt.verify(token, process.env.JWT_ACCESS_TOKEN_SECRET!);
+
+  const { workspaceId, boardId, newOrder } = req.body;
+
+  if (!token) {
+    res.status(400).json({ message: 'Invalid token.' });
+    return;
+  }
+
+  if (!payload) {
+    res.status(403).json({ message: 'Invalid or expired authorization token.' });
+    return;
+  }
+
+  try {
+    const boards = await prisma.board.findMany({
+      where: { workspaceId },
+      orderBy: { order: 'asc' },
+    });
+
+    const movingBoard = boards.find((b) => b.id === boardId);
+    if (!movingBoard) {
+      res.status(404).json({ message: 'Board not found in workspace.' });
+      return;
+    }
+
+    const oldIndex = movingBoard.order;
+
+    if (oldIndex === newOrder) {
+      res.status(200).json({ message: 'No changes needed.' });
+      return;
+    }
+
+    const updatedBoards = boards.filter((b) => b.id !== boardId).map((board, index) => board);
+
+    updatedBoards.splice(newOrder, 0, { ...movingBoard });
+
+    const finalBoards = updatedBoards.map((board, index) => ({
+      id: board.id,
+      order: index,
+    }));
+
+    await prisma.$transaction(
+      finalBoards.map((b) =>
+        prisma.board.update({
+          where: { id: b.id },
+          data: { order: b.order },
+        }),
+      ),
+    );
+
+    res.status(200).json({ message: 'Board order updated successfully.' });
+    return;
+  } catch (error) {
+    console.error(error);
+    res.status(400).json({ message: error });
+  }
+}
+
 export async function addTask(req: Request, res: Response) {
   const token = req.cookies['access-token'];
   const payload = jwt.verify(token, process.env.JWT_ACCESS_TOKEN_SECRET!);
@@ -389,66 +450,5 @@ export async function updateTaskName(req: Request, res: Response) {
     console.error(error);
     res.status(400).json({ error: error });
     return;
-  }
-}
-
-export async function updateBoardOrders(req: Request, res: Response) {
-  const token = req.cookies['access-token'];
-  const payload = jwt.verify(token, process.env.JWT_ACCESS_TOKEN_SECRET!);
-
-  const { workspaceId, boardId, newOrder } = req.body;
-
-  if (!token) {
-    res.status(400).json({ message: 'Invalid token.' });
-    return;
-  }
-
-  if (!payload) {
-    res.status(403).json({ message: 'Invalid or expired authorization token.' });
-    return;
-  }
-
-  try {
-    const boards = await prisma.board.findMany({
-      where: { workspaceId },
-      orderBy: { order: 'asc' },
-    });
-
-    const movingBoard = boards.find((b) => b.id === boardId);
-    if (!movingBoard) {
-      res.status(404).json({ message: 'Board not found in workspace.' });
-      return;
-    }
-
-    const oldIndex = movingBoard.order;
-
-    if (oldIndex === newOrder) {
-      res.status(200).json({ message: 'No changes needed.' });
-      return;
-    }
-
-    const updatedBoards = boards.filter((b) => b.id !== boardId).map((board, index) => board); // sadece kopya
-
-    updatedBoards.splice(newOrder, 0, { ...movingBoard });
-
-    const finalBoards = updatedBoards.map((board, index) => ({
-      id: board.id,
-      order: index,
-    }));
-
-    await prisma.$transaction(
-      finalBoards.map((b) =>
-        prisma.board.update({
-          where: { id: b.id },
-          data: { order: b.order },
-        }),
-      ),
-    );
-
-    res.status(200).json({ message: 'Board order updated successfully.' });
-    return;
-  } catch (error) {
-    console.error(error);
-    res.status(400).json({ message: error });
   }
 }
