@@ -19,9 +19,10 @@ model User {
   profileImage String?
 
   boards       BoardMember[]
-  tasks        Task[]
+  tasks        Task[]             @relation("AssignedTasks")
   workspaces   WorkspaceMember[]
-  createdWorkspaces Workspace[] @relation("CreatedWorkspaces")
+  createdWorkspaces Workspace[]  @relation("CreatedWorkspaces")
+  comments     Comment[]
 }
 
 model Workspace {
@@ -53,10 +54,9 @@ model Board {
   title       String
   createdAt   DateTime @default(now())
   order       Int
-  
   workspaceId String
-  workspace   Workspace @relation(fields: [workspaceId], references: [id])
 
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
   members     BoardMember[]
   tasks       Task[]
 }
@@ -74,15 +74,61 @@ model BoardMember {
 }
 
 model Task {
-  id            String   @id @default(uuid())
+  id            String     @id @default(uuid())
   title         String
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  description   String?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
   order         Int
+  dueDate       DateTime?
 
   boardId       String
   assignedToId  String?
 
-  board         Board @relation(fields: [boardId], references: [id])
-  assignedTo    User? @relation(fields: [assignedToId], references: [id])
+  board         Board      @relation(fields: [boardId], references: [id])
+  assignedTo    User?      @relation("AssignedTasks", fields: [assignedToId], references: [id])
+
+  comments      Comment[]
+  attachments   Attachment[]
+  labels        TaskLabel[]
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  content   String
+  createdAt DateTime @default(now())
+
+  taskId    String
+  authorId  String
+
+  task      Task     @relation(fields: [taskId], references: [id])
+  author    User     @relation(fields: [authorId], references: [id])
+}
+
+model Attachment {
+  id        String   @id @default(uuid())
+  name      String
+  url       String
+  createdAt DateTime @default(now())
+
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id])
+}
+
+model Label {
+  id        String   @id @default(uuid())
+  name      String
+  color     String
+
+  tasks     TaskLabel[]
+}
+
+model TaskLabel {
+  taskId   String
+  labelId  String
+
+  task     Task  @relation(fields: [taskId], references: [id])
+  label    Label @relation(fields: [labelId], references: [id])
+
+  @@id([taskId, labelId])
 }
