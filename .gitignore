@@ -6,3 +6,4 @@ prisma/dev.db
 prisma/.env
 prisma/.gitkeep
 uploads
+temp_uploads

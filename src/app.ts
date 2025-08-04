@@ -13,9 +13,14 @@ dotenv.config();
 
 const app: Application = express();
 const uploadDir = path.join(process.cwd(), 'uploads');
+const tempUploadDir = path.join(process.cwd(), 'temp_uploads');
 
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+if (!fs.existsSync(tempUploadDir)) {
+  fs.mkdirSync(tempUploadDir, { recursive: true });
 }
 
 app.use(
@@ -39,7 +44,9 @@ app.use(
 
 // Sends file to the browser
 const uploadsPath = path.resolve(process.cwd(), 'uploads');
+const tempUploadsPath = path.resolve(process.cwd(), 'temp_uploads');
 app.use('/uploads', express.static(uploadsPath));
+app.use('/temp_uploads', express.static(tempUploadsPath));
 
 app.use(passport.initialize());
 app.use(passport.session());

@@ -35,7 +35,7 @@ export async function uploadTaskImage(req: Request, res: Response) {
   const urls = uploadedFiles.map((file) => ({
     originalName: file.originalname,
     filename: file.filename,
-    url: `/uploads/${file.filename}`,
+    url: `/temp_uploads/${file.filename}`,
   }));
 
   res.status(200).json({ images: urls });

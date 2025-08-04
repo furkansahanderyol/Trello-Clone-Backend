@@ -22,6 +22,7 @@ import {
   updateBoardTasks,
   updateTaskName,
 } from '../controllers/board';
+import tempUpload from '../middlewares/tempUpload';
 import { uploadTaskImage } from '../controllers/task';
 
 const router: Router = Router();
@@ -62,6 +63,6 @@ router.post('/add-task', addTask);
 router.patch('/update-task', updateTaskName);
 
 // Task endpoints
-router.post('/upload-task-image', upload.array('files', 10), uploadTaskImage);
+router.post('/upload-task-image', tempUpload.array('files', 10), uploadTaskImage);
 
 export default router;
