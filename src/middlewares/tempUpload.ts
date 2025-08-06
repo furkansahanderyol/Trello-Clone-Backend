@@ -1,9 +1,24 @@
 import multer from 'multer';
 import path from 'path';
+import fs from 'fs';
 
 const tempStorage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, 'temp_uploads');
+    const boardId = req.query.boardId;
+
+    if (!boardId) {
+      return cb(new Error('Board ID is required'), '');
+    }
+
+    const uploadPath = path.join(__dirname, '../../temp_uploads', boardId as string);
+
+    try {
+      fs.mkdirSync(uploadPath, { recursive: true });
+    } catch (err) {
+      console.error('mkdir error:', err);
+    }
+
+    cb(null, uploadPath);
   },
   filename: function (req, file, cb) {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
@@ -16,7 +31,7 @@ function fileFilter(req: Express.Request, file: Express.Multer.File, cb: multer.
   if (file.mimetype.startsWith('image/')) {
     cb(null, true);
   } else {
-    cb(new Error('Sadece resim dosyalarına izin verilir!'));
+    cb(new Error('Only image files are valid!'));
   }
 }
 
