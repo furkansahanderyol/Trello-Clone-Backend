@@ -368,7 +368,7 @@ export async function addTask(req: Request, res: Response) {
   const token = req.cookies['access-token'];
   const payload = jwt.verify(token, process.env.JWT_ACCESS_TOKEN_SECRET!);
 
-  const { title, boardId } = req.body;
+  const { title, boardId, user } = req.body;
 
   if (!token) {
     res.status(400).json({ message: 'Invalid token.' });
@@ -386,6 +386,16 @@ export async function addTask(req: Request, res: Response) {
   }
 
   try {
+    const dbUser = await prisma.user.findUnique({
+      where: { email: user.email },
+      select: { id: true },
+    });
+
+    if (!dbUser) {
+      res.status(404).json({ message: 'User not found.' });
+      return;
+    }
+
     const lastTask = await prisma.task.findFirst({
       where: {
         boardId: boardId,
@@ -402,6 +412,7 @@ export async function addTask(req: Request, res: Response) {
         title: title,
         boardId: boardId,
         order: nextOrder,
+        assignedToId: dbUser.id,
       },
     });
     res.status(200).json({ message: 'Board updated.' });

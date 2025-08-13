@@ -4,13 +4,13 @@ import fs from 'fs';
 
 const tempStorage = multer.diskStorage({
   destination: function (req, file, cb) {
-    const boardId = req.query.boardId;
+    const taskId = req.query.taskId;
 
-    if (!boardId) {
+    if (!taskId) {
       return cb(new Error('Board ID is required'), '');
     }
 
-    const uploadPath = path.join(__dirname, '../../temp_uploads', boardId as string);
+    const uploadPath = path.join(__dirname, '../../temp_uploads', taskId as string);
 
     try {
       fs.mkdirSync(uploadPath, { recursive: true });

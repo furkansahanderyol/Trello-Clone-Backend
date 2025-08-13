@@ -79,7 +79,7 @@ model Task {
   description   Json?
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
-  order         Int
+  order         Int       
   dueDate       DateTime?
 
   boardId       String
@@ -97,7 +97,8 @@ model Comment {
   id        String   @id @default(uuid())
   content   String
   createdAt DateTime @default(now())
-
+ order     Int      @default(0)
+ 
   taskId    String
   authorId  String
 
