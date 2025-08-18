@@ -1,5 +1,8 @@
 import * as dotenv from 'dotenv';
 import userRouter from './routes/user';
+import workspaceRouter from './routes/workspace';
+import boardRouter from './routes/board';
+import taskRouter from './routes/task';
 import express, { Application } from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
@@ -52,5 +55,8 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 app.use(userRouter);
+app.use(workspaceRouter);
+app.use(boardRouter);
+app.use(taskRouter);
 
 export default app;

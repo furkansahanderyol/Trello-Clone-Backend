@@ -13,17 +13,6 @@ import {
 } from '../controllers/user';
 import passport from '../config/passport';
 import upload from '../middlewares/upload';
-import { createWorkspace, getAllWorkspaces, getWorkspace } from '../controllers/workspace';
-import {
-  addTask,
-  createBoard,
-  getAllBoards,
-  updateBoardOrders,
-  updateBoardTasks,
-  updateTaskName,
-} from '../controllers/board';
-import tempUpload from '../middlewares/tempUpload';
-import { getTaskData, taskComment, uploadTaskDescription, uploadTaskImage } from '../controllers/task';
 
 const router: Router = Router();
 
@@ -48,24 +37,5 @@ router.get(
 );
 
 router.post('/upload-profile-image', upload.single('profileImage'), updateProfileImage);
-
-// Workspace endpoints
-router.get('/get-all-workspaces', getAllWorkspaces);
-router.post('/create-workspace', createWorkspace);
-router.get('/get-workspace/:id', getWorkspace);
-
-// Board endpoints
-router.get('/boards/:workspaceId', getAllBoards);
-router.post('/create-board', createBoard);
-router.patch('/update-board-tasks', updateBoardTasks);
-router.patch('/update-board-orders', updateBoardOrders);
-router.post('/add-task', addTask);
-router.patch('/update-task', updateTaskName);
-
-// Task endpoints
-router.post('/get-task-data', getTaskData);
-router.post('/upload-task-image', tempUpload.array('files', 10), uploadTaskImage);
-router.patch('/upload-task-description', uploadTaskDescription);
-router.post('/task-comment', taskComment);
 
 export default router;
