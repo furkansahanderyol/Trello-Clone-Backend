@@ -53,6 +53,22 @@ export async function getTaskData(req: Request, res: Response) {
           workspace: true,
         },
       },
+      comments: {
+        include: {
+          author: {
+            select: {
+              id: true,
+              name: true,
+              surname: true,
+              email: true,
+              profileImage: true,
+            },
+          },
+        },
+        orderBy: {
+          order: 'asc',
+        },
+      },
     },
   });
 
