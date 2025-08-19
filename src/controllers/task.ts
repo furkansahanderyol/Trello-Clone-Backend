@@ -5,6 +5,12 @@ import path from 'path';
 import { changeFileLocation } from '../helpers/changeFileLocation';
 import { PrismaClient } from '@prisma/client';
 
+interface CustomJwtPayload extends jwt.JwtPayload {
+  id: string;
+  email: string;
+  isVerified: boolean;
+}
+
 const prisma = new PrismaClient();
 
 export async function getTaskData(req: Request, res: Response) {
@@ -271,5 +277,57 @@ export async function taskComment(req: Request, res: Response) {
     res.status(400).json({ error: `Something went wrong, ${error}` });
 
     return;
+  }
+}
+
+export async function deleteTaskComment(req: Request, res: Response) {
+  const token = req.cookies['access-token'];
+  const payload = jwt.verify(token, process.env.JWT_ACCESS_TOKEN_SECRET!) as CustomJwtPayload;
+
+  if (!token) {
+    res.status(400).json({ message: 'Invalid token.' });
+    return;
+  }
+
+  if (!payload) {
+    res.status(403).json({ message: 'Invalid or expired authorization token.' });
+    return;
+  }
+
+  const { workspaceId, boardId, taskId, commentId } = req.body;
+
+  try {
+    const existingComment = await prisma.comment.findFirst({
+      where: {
+        id: commentId,
+        task: {
+          id: taskId,
+          board: {
+            id: boardId,
+            workspaceId: workspaceId,
+          },
+        },
+      },
+      include: {
+        author: true,
+      },
+    });
+
+    if (!existingComment) {
+      res.status(404).json({ error: 'Comment not found.' });
+      return;
+    }
+
+    if (existingComment.authorId !== payload.id) {
+      res.status(403).json({ error: 'You are not allowed to delete this comment.' });
+      return;
+    }
+
+    await prisma.comment.delete({
+      where: { id: commentId },
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Something went wrong.' });
   }
 }

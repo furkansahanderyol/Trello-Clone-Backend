@@ -14,6 +14,7 @@ import { changePasswordSchema } from '../schemas/changePasswordSchema';
 const prisma = new PrismaClient();
 
 interface CustomJwtPayload extends jwt.JwtPayload {
+  id: string;
   email: string;
   isVerified: boolean;
 }
