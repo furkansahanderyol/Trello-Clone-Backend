@@ -3,6 +3,7 @@ import {
   deleteTaskComment,
   getTaskData,
   taskComment,
+  updateTaskComment,
   uploadTaskDescription,
   uploadTaskImage,
 } from '../controllers/task';
@@ -15,5 +16,6 @@ router.post('/upload-task-image', tempUpload.array('files', 10), uploadTaskImage
 router.patch('/upload-task-description', uploadTaskDescription);
 router.post('/task-comment', taskComment);
 router.post('/delete-task-comment', deleteTaskComment);
+router.patch('/update-task-comment', updateTaskComment);
 
 export default router;

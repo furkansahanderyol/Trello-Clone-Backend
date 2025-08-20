@@ -270,7 +270,7 @@ export async function taskComment(req: Request, res: Response) {
       },
     });
 
-    res.status(200);
+    res.status(200).json({ success: true });
     return;
   } catch (error) {
     console.error(error);
@@ -326,8 +326,108 @@ export async function deleteTaskComment(req: Request, res: Response) {
     await prisma.comment.delete({
       where: { id: commentId },
     });
+
+    res.status(200).json({ success: true });
+    return;
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Something went wrong.' });
+  }
+}
+
+export async function updateTaskComment(req: Request, res: Response) {
+  const token = req.cookies['access-token'];
+  const payload = jwt.verify(token, process.env.JWT_ACCESS_TOKEN_SECRET!) as CustomJwtPayload;
+
+  if (!token) {
+    res.status(400).json({ message: 'Invalid token.' });
+    return;
+  }
+
+  if (!payload) {
+    res.status(403).json({ message: 'Invalid or expired authorization token.' });
+    return;
+  }
+
+  const { workspaceId, boardId, taskId, commentId, comment } = req.body;
+
+  try {
+    const task = await prisma.task.findFirst({
+      where: {
+        id: taskId,
+        boardId,
+        board: {
+          workspaceId,
+        },
+      },
+      include: {
+        comments: true,
+      },
+    });
+
+    if (!task) {
+      res.status(404).json({ error: 'Task not found.' });
+      return;
+    }
+
+    const existingComment = await prisma.comment.findFirst({
+      where: {
+        id: commentId,
+        taskId: task.id,
+        authorId: payload.userId,
+      },
+    });
+
+    if (!existingComment) {
+      res.status(404).json({ error: 'Comment not found or not owned by you.' });
+      return;
+    }
+
+    const updatedContent = await Promise.all(
+      comment.content.map(async (item: any) => {
+        if (item.type !== 'image') return item;
+
+        let pathname = new URL(item.attrs.src).pathname;
+        if (pathname.startsWith('/')) pathname = pathname.slice(1);
+        if (pathname.startsWith('temp_uploads/')) {
+          pathname = pathname.slice('temp_uploads/'.length);
+        }
+
+        await changeFileLocation(pathname, 'uploads');
+
+        return {
+          ...item,
+          attrs: {
+            ...item.attrs,
+            src: item.attrs.src.replace('temp_uploads', 'uploads'),
+          },
+        };
+      }),
+    );
+
+    // Clean remaining images from /temp_uploads
+    const tempPath = path.join(process.cwd(), 'temp_uploads', taskId);
+
+    fs.rm(tempPath, { recursive: true, force: true }, (err) => {
+      if (err) {
+        console.error('Error occurred when folder trying to be delete', err);
+      }
+    });
+
+    const updatedComment = JSON.stringify(updatedContent);
+
+    await prisma.comment.update({
+      where: { id: commentId },
+      data: { content: updatedComment },
+    });
+
+    res.status(200).json({
+      message: 'Comment updated successfully',
+    });
+
+    return;
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error.' });
   }
 }
