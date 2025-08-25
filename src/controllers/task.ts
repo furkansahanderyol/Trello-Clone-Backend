@@ -59,6 +59,7 @@ export async function getTaskData(req: Request, res: Response) {
           workspace: true,
         },
       },
+
       comments: {
         include: {
           author: {
@@ -429,5 +430,302 @@ export async function updateTaskComment(req: Request, res: Response) {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Internal server error.' });
+  }
+}
+
+export async function getTaskLabels(req: Request, res: Response) {
+  const token = req.cookies['access-token'];
+  const payload = jwt.verify(token, process.env.JWT_ACCESS_TOKEN_SECRET!) as CustomJwtPayload;
+
+  if (!token) {
+    res.status(400).json({ message: 'Invalid token.' });
+    return;
+  }
+
+  if (!payload) {
+    res.status(403).json({ message: 'Invalid or expired authorization token.' });
+    return;
+  }
+
+  const { workspaceId, boardId, taskId } = req.body;
+
+  if (!workspaceId || !boardId || !taskId) {
+    res.status(400).json({ message: 'workspaceId, boardId and taskId are required.' });
+    return;
+  }
+  try {
+    const taskWithLabels = await prisma.task.findFirst({
+      where: {
+        id: taskId,
+        boardId: boardId,
+        board: {
+          id: boardId,
+          workspaceId: workspaceId,
+        },
+      },
+      include: {
+        labels: {
+          include: {
+            label: {
+              select: {
+                id: true,
+                name: true,
+                color: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!taskWithLabels) {
+      res.status(404).json({ message: 'Task not found in the specified board/workspace.' });
+      return;
+    }
+
+    const labels = taskWithLabels.labels.map((l) => l.label);
+
+    res.status(200).json({ success: true, labels });
+  } catch (error) {
+    console.error('getTaskLabels error:', error);
+    res.status(500).json({ message: 'Something went wrong.' });
+  }
+}
+
+export async function createTaskLabel(req: Request, res: Response) {
+  const token = req.cookies['access-token'];
+  const payload = jwt.verify(token, process.env.JWT_ACCESS_TOKEN_SECRET!) as CustomJwtPayload;
+
+  if (!token) {
+    res.status(400).json({ message: 'Invalid token.' });
+    return;
+  }
+
+  if (!payload) {
+    res.status(403).json({ message: 'Invalid or expired authorization token.' });
+    return;
+  }
+
+  const { workspaceId, boardId, taskId, labelName, labelColor } = req.body;
+
+  if (!workspaceId || !boardId || !taskId || !labelName || !labelColor) {
+    res.status(400).json({ message: 'Missing required fields.' });
+    return;
+  }
+
+  try {
+    const task = await prisma.task.findFirst({
+      where: {
+        id: taskId,
+        board: {
+          id: boardId,
+          workspaceId: workspaceId,
+        },
+      },
+    });
+
+    if (!task) {
+      res.status(404).json({ error: 'Task not found in the given workspace/board.' });
+      return;
+    }
+
+    let label = await prisma.label.findFirst({
+      where: {
+        name: labelName,
+        color: labelColor,
+      },
+    });
+
+    if (!label) {
+      label = await prisma.label.create({
+        data: {
+          name: labelName,
+          color: labelColor,
+        },
+      });
+    }
+
+    const existingTaskLabel = await prisma.taskLabel.findUnique({
+      where: {
+        taskId_labelId: {
+          taskId: task.id,
+          labelId: label.id,
+        },
+      },
+    });
+
+    if (existingTaskLabel) {
+      res.status(409).json({ error: 'Label already attached to this task.' });
+      return;
+    }
+
+    await prisma.taskLabel.create({
+      data: {
+        taskId: task.id,
+        labelId: label.id,
+      },
+    });
+
+    const taskWithLabels = await prisma.task.findUnique({
+      where: { id: taskId },
+      include: {
+        labels: {
+          include: {
+            label: {
+              select: { id: true, name: true, color: true },
+            },
+          },
+        },
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Label successfully added to task.',
+      labels: taskWithLabels?.labels.map((l) => l.label) || [],
+    });
+    return;
+  } catch (error) {
+    console.error('createTaskLabel error:', error);
+    res.status(500).json({ error: 'Something went wrong.' });
+    return;
+  }
+}
+
+export async function editTaskLabel(req: Request, res: Response) {
+  const token = req.cookies['access-token'];
+  const payload = jwt.verify(token, process.env.JWT_ACCESS_TOKEN_SECRET!) as CustomJwtPayload;
+
+  if (!token) {
+    res.status(400).json({ message: 'Invalid token.' });
+    return;
+  }
+
+  if (!payload) {
+    res.status(403).json({ message: 'Invalid or expired authorization token.' });
+    return;
+  }
+
+  const { workspaceId, boardId, taskId, labelId, labelName, labelColor } = req.body;
+
+  if (!workspaceId || !boardId || !taskId || !labelId || !labelName || !labelColor) {
+    res.status(400).json({ message: 'Missing required fields.' });
+    return;
+  }
+
+  try {
+    const task = await prisma.task.findFirst({
+      where: {
+        id: taskId,
+        board: { id: boardId, workspaceId },
+      },
+    });
+
+    if (!task) {
+      res.status(404).json({ error: 'Task not found in the given workspace/board.' });
+      return;
+    }
+
+    const existingLabel = await prisma.label.findUnique({
+      where: { id: labelId },
+    });
+
+    if (!existingLabel) {
+      res.status(404).json({ error: 'Label not found.' });
+      return;
+    }
+
+    const updatedLabel = await prisma.label.update({
+      where: { id: labelId },
+      data: {
+        name: labelName,
+        color: labelColor,
+      },
+    });
+
+    const taskWithLabels = await prisma.task.findUnique({
+      where: { id: taskId },
+      include: {
+        labels: {
+          include: {
+            label: {
+              select: { id: true, name: true, color: true },
+            },
+          },
+        },
+      },
+    });
+
+    res.status(200).json({ success: true, labels: taskWithLabels?.labels.map((l) => l.label) || [] });
+    return;
+  } catch (error) {
+    console.error('editTaskLabel error:', error);
+    res.status(500).json({ error: 'Something went wrong.' });
+    return;
+  }
+}
+
+export async function deleteTaskLabel(req: Request, res: Response) {
+  const token = req.cookies['access-token'];
+  const payload = jwt.verify(token, process.env.JWT_ACCESS_TOKEN_SECRET!) as CustomJwtPayload;
+
+  if (!token) {
+    res.status(400).json({ message: 'Invalid token.' });
+    return;
+  }
+
+  if (!payload) {
+    res.status(403).json({ message: 'Invalid or expired authorization token.' });
+    return;
+  }
+
+  const { workspaceId, boardId, taskId, labelId } = req.body;
+
+  if (!workspaceId || !boardId || !taskId || !labelId) {
+    res.status(400).json({ message: 'Missing required fields.' });
+    return;
+  }
+
+  try {
+    const task = await prisma.task.findFirst({
+      where: {
+        id: taskId,
+        board: { id: boardId, workspaceId },
+      },
+    });
+
+    if (!task) {
+      res.status(404).json({ error: 'Task not found in the given workspace/board.' });
+      return;
+    }
+
+    await prisma.taskLabel.delete({
+      where: {
+        taskId_labelId: {
+          taskId,
+          labelId,
+        },
+      },
+    });
+
+    const taskWithLabels = await prisma.task.findUnique({
+      where: { id: taskId },
+      include: {
+        labels: {
+          include: {
+            label: {
+              select: { id: true, name: true, color: true },
+            },
+          },
+        },
+      },
+    });
+
+    res.status(200).json({ success: true, labels: taskWithLabels?.labels.map((l) => l.label) || [] });
+    return;
+  } catch (error) {
+    console.error('deleteTaskLabel error:', error);
+    res.status(500).json({ error: 'Something went wrong.' });
+    return;
   }
 }

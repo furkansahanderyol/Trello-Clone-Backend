@@ -1,7 +1,11 @@
 import { Router } from 'express';
 import {
+  createTaskLabel,
   deleteTaskComment,
+  deleteTaskLabel,
+  editTaskLabel,
   getTaskData,
+  getTaskLabels,
   taskComment,
   updateTaskComment,
   uploadTaskDescription,
@@ -17,5 +21,9 @@ router.patch('/upload-task-description', uploadTaskDescription);
 router.post('/task-comment', taskComment);
 router.post('/delete-task-comment', deleteTaskComment);
 router.patch('/update-task-comment', updateTaskComment);
+router.post('/get-task-labels', getTaskLabels);
+router.post('/create-task-label', createTaskLabel);
+router.patch('/edit-task-label', editTaskLabel);
+router.post('/delete-task-label', deleteTaskLabel);
 
 export default router;
