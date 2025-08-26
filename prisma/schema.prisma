@@ -8,21 +8,21 @@ datasource db {
 }
 
 model User {
-  id           String  @id @default(uuid())
-  email        String  @unique
-  password     String?
-  name         String
-  surname      String
-  isVerified   Boolean @default(false)
-  provider     String  @default("credentials")
-  googleId     String? @unique
-  profileImage String?
+  id                 String  @id @default(uuid())
+  email              String  @unique
+  password           String?
+  name               String
+  surname            String
+  isVerified         Boolean @default(false)
+  provider           String  @default("credentials")
+  googleId           String? @unique
+  profileImage       String?
 
-  boards       BoardMember[]
-  tasks        Task[]             @relation("AssignedTasks")
-  workspaces   WorkspaceMember[]
-  createdWorkspaces Workspace[]  @relation("CreatedWorkspaces")
-  comments     Comment[]
+  boards             BoardMember[]
+  tasks              Task[]             @relation("AssignedTasks")
+  workspaces         WorkspaceMember[]
+  createdWorkspaces  Workspace[]        @relation("CreatedWorkspaces")
+  comments           Comment[]
 }
 
 model Workspace {
@@ -35,6 +35,7 @@ model Workspace {
   creator    User     @relation("CreatedWorkspaces", fields: [createdBy], references: [id])
   members    WorkspaceMember[]
   boards     Board[]
+  labels     Label[]
 }
 
 model WorkspaceMember {
@@ -97,7 +98,7 @@ model Comment {
   id        String   @id @default(uuid())
   content   String
   createdAt DateTime @default(now())
- order     Int      @default(0)
+  order     Int      @default(0)
  
   taskId    String
   authorId  String
@@ -117,16 +118,19 @@ model Attachment {
 }
 
 model Label {
-  id        String   @id @default(uuid())
-  name      String
-  color     String
+  id          String   @id @default(uuid())
+  name        String
+  color       String
+  workspaceId String
 
-  tasks     TaskLabel[]
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  tasks       TaskLabel[]
 }
 
 model TaskLabel {
   taskId   String
   labelId  String
+  isActive Boolean @default(false)
 
   task     Task  @relation(fields: [taskId], references: [id])
   label    Label @relation(fields: [labelId], references: [id])

@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { changeFileLocation } from '../helpers/changeFileLocation';
 import { PrismaClient } from '@prisma/client';
+import { connect } from 'http2';
 
 interface CustomJwtPayload extends jwt.JwtPayload {
   id: string;
@@ -433,7 +434,7 @@ export async function updateTaskComment(req: Request, res: Response) {
   }
 }
 
-export async function getTaskLabels(req: Request, res: Response) {
+export async function getWorkspaceLabels(req: Request, res: Response) {
   const token = req.cookies['access-token'];
   const payload = jwt.verify(token, process.env.JWT_ACCESS_TOKEN_SECRET!) as CustomJwtPayload;
 
@@ -447,52 +448,31 @@ export async function getTaskLabels(req: Request, res: Response) {
     return;
   }
 
-  const { workspaceId, boardId, taskId } = req.body;
+  const { workspaceId } = req.body;
 
-  if (!workspaceId || !boardId || !taskId) {
-    res.status(400).json({ message: 'workspaceId, boardId and taskId are required.' });
+  if (!workspaceId) {
+    res.status(400).json({ message: 'workspaceId is required.' });
     return;
   }
+
   try {
-    const taskWithLabels = await prisma.task.findFirst({
-      where: {
-        id: taskId,
-        boardId: boardId,
-        board: {
-          id: boardId,
-          workspaceId: workspaceId,
-        },
-      },
-      include: {
-        labels: {
-          include: {
-            label: {
-              select: {
-                id: true,
-                name: true,
-                color: true,
-              },
-            },
-          },
-        },
+    const labels = await prisma.label.findMany({
+      where: { workspaceId },
+      select: {
+        id: true,
+        name: true,
+        color: true,
       },
     });
 
-    if (!taskWithLabels) {
-      res.status(404).json({ message: 'Task not found in the specified board/workspace.' });
-      return;
-    }
-
-    const labels = taskWithLabels.labels.map((l) => l.label);
-
     res.status(200).json({ success: true, labels });
   } catch (error) {
-    console.error('getTaskLabels error:', error);
+    console.error('getWorkspaceLabels error:', error);
     res.status(500).json({ message: 'Something went wrong.' });
   }
 }
 
-export async function createTaskLabel(req: Request, res: Response) {
+export async function createWorkspaceLabel(req: Request, res: Response) {
   const token = req.cookies['access-token'];
   const payload = jwt.verify(token, process.env.JWT_ACCESS_TOKEN_SECRET!) as CustomJwtPayload;
 
@@ -530,10 +510,7 @@ export async function createTaskLabel(req: Request, res: Response) {
     }
 
     let label = await prisma.label.findFirst({
-      where: {
-        name: labelName,
-        color: labelColor,
-      },
+      where: { workspaceId, name: labelName, color: labelColor },
     });
 
     if (!label) {
@@ -541,6 +518,7 @@ export async function createTaskLabel(req: Request, res: Response) {
         data: {
           name: labelName,
           color: labelColor,
+          workspaceId,
         },
       });
     }
@@ -553,7 +531,6 @@ export async function createTaskLabel(req: Request, res: Response) {
         },
       },
     });
-
     if (existingTaskLabel) {
       res.status(409).json({ error: 'Label already attached to this task.' });
       return;
@@ -570,11 +547,7 @@ export async function createTaskLabel(req: Request, res: Response) {
       where: { id: taskId },
       include: {
         labels: {
-          include: {
-            label: {
-              select: { id: true, name: true, color: true },
-            },
-          },
+          include: { label: { select: { id: true, name: true, color: true } } },
         },
       },
     });
@@ -592,7 +565,7 @@ export async function createTaskLabel(req: Request, res: Response) {
   }
 }
 
-export async function editTaskLabel(req: Request, res: Response) {
+export async function editWorkspaceLabel(req: Request, res: Response) {
   const token = req.cookies['access-token'];
   const payload = jwt.verify(token, process.env.JWT_ACCESS_TOKEN_SECRET!) as CustomJwtPayload;
 
@@ -614,28 +587,19 @@ export async function editTaskLabel(req: Request, res: Response) {
   }
 
   try {
-    const task = await prisma.task.findFirst({
+    const label = await prisma.label.findFirst({
       where: {
-        id: taskId,
-        board: { id: boardId, workspaceId },
+        id: labelId,
+        workspaceId,
       },
     });
 
-    if (!task) {
-      res.status(404).json({ error: 'Task not found in the given workspace/board.' });
+    if (!label) {
+      res.status(404).json({ message: 'Label not found in this workspace.' });
       return;
     }
 
-    const existingLabel = await prisma.label.findUnique({
-      where: { id: labelId },
-    });
-
-    if (!existingLabel) {
-      res.status(404).json({ error: 'Label not found.' });
-      return;
-    }
-
-    const updatedLabel = await prisma.label.update({
+    await prisma.label.update({
       where: { id: labelId },
       data: {
         name: labelName,
@@ -643,20 +607,12 @@ export async function editTaskLabel(req: Request, res: Response) {
       },
     });
 
-    const taskWithLabels = await prisma.task.findUnique({
-      where: { id: taskId },
-      include: {
-        labels: {
-          include: {
-            label: {
-              select: { id: true, name: true, color: true },
-            },
-          },
-        },
-      },
+    const labels = await prisma.label.findMany({
+      where: { workspaceId },
+      select: { id: true, name: true, color: true },
     });
 
-    res.status(200).json({ success: true, labels: taskWithLabels?.labels.map((l) => l.label) || [] });
+    res.status(200).json({ success: true, labels: labels });
     return;
   } catch (error) {
     console.error('editTaskLabel error:', error);
@@ -665,7 +621,7 @@ export async function editTaskLabel(req: Request, res: Response) {
   }
 }
 
-export async function deleteTaskLabel(req: Request, res: Response) {
+export async function deleteWorkspaceLabel(req: Request, res: Response) {
   const token = req.cookies['access-token'];
   const payload = jwt.verify(token, process.env.JWT_ACCESS_TOKEN_SECRET!) as CustomJwtPayload;
 
@@ -679,27 +635,102 @@ export async function deleteTaskLabel(req: Request, res: Response) {
     return;
   }
 
-  const { workspaceId, boardId, taskId, labelId } = req.body;
+  const { workspaceId, labelId } = req.body;
 
-  if (!workspaceId || !boardId || !taskId || !labelId) {
+  if (!workspaceId || !labelId) {
     res.status(400).json({ message: 'Missing required fields.' });
     return;
   }
 
   try {
-    const task = await prisma.task.findFirst({
-      where: {
-        id: taskId,
-        board: { id: boardId, workspaceId },
-      },
+    const label = await prisma.label.findFirst({
+      where: { id: labelId, workspaceId },
     });
 
-    if (!task) {
-      res.status(404).json({ error: 'Task not found in the given workspace/board.' });
+    if (!label) {
+      res.status(404).json({ message: 'Label not found in this workspace.' });
       return;
     }
 
-    await prisma.taskLabel.delete({
+    await prisma.taskLabel.deleteMany({
+      where: { labelId },
+    });
+
+    await prisma.label.delete({
+      where: { id: labelId },
+    });
+
+    const labels = await prisma.label.findMany({
+      where: { workspaceId },
+      select: { id: true, name: true, color: true },
+    });
+
+    res.status(200).json({ success: true, labels: labels });
+    return;
+  } catch (error) {
+    console.error('deleteTaskLabel error:', error);
+    res.status(500).json({ error: 'Something went wrong.' });
+    return;
+  }
+}
+
+export async function getTaskLabelsWithStatus(req: Request, res: Response) {
+  const token = req.cookies['access-token'];
+  const payload = jwt.verify(token, process.env.JWT_ACCESS_TOKEN_SECRET!) as CustomJwtPayload;
+
+  if (!token) {
+    res.status(400).json({ message: 'Invalid token.' });
+    return;
+  }
+
+  if (!payload) {
+    res.status(403).json({ message: 'Invalid or expired authorization token.' });
+    return;
+  }
+
+  const { workspaceId, taskId } = req.body;
+
+  if (!workspaceId || !taskId) {
+    res.status(400).json({ message: 'Missing required fields.' });
+    return;
+  }
+
+  try {
+    const workspaceLabels = await prisma.label.findMany({
+      where: { workspaceId },
+      select: { id: true, name: true, color: true },
+    });
+
+    const taskLabels = await prisma.taskLabel.findMany({
+      where: { taskId },
+      select: { labelId: true, isActive: true },
+    });
+
+    const labelsWithStatus = workspaceLabels.map((label) => {
+      const taskLabel = taskLabels.find((tl) => tl.labelId === label.id);
+      return {
+        ...label,
+        isActive: taskLabel ? taskLabel.isActive : false,
+      };
+    });
+
+    res.status(200).json({ success: true, labels: labelsWithStatus });
+  } catch (error) {
+    console.error('getTaskLabelsWithStatus error:', error);
+    res.status(500).json({ message: 'Something went wrong.' });
+  }
+}
+
+export async function toggleTaskLabel(req: Request, res: Response) {
+  const { workspaceId, taskId, labelId } = req.body;
+
+  if (!taskId || !labelId) {
+    res.status(400).json({ message: 'Missing required fields.' });
+    return;
+  }
+
+  try {
+    let taskLabel = await prisma.taskLabel.findUnique({
       where: {
         taskId_labelId: {
           taskId,
@@ -708,24 +739,37 @@ export async function deleteTaskLabel(req: Request, res: Response) {
       },
     });
 
-    const taskWithLabels = await prisma.task.findUnique({
-      where: { id: taskId },
-      include: {
-        labels: {
-          include: {
-            label: {
-              select: { id: true, name: true, color: true },
-            },
-          },
-        },
-      },
+    if (!taskLabel) {
+      taskLabel = await prisma.taskLabel.create({
+        data: { taskId, labelId, isActive: true },
+      });
+    } else {
+      taskLabel = await prisma.taskLabel.update({
+        where: { taskId_labelId: { taskId, labelId } },
+        data: { isActive: !taskLabel.isActive },
+      });
+    }
+
+    const workspaceLabels = await prisma.label.findMany({
+      where: { workspaceId },
+      select: { id: true, name: true, color: true },
     });
 
-    res.status(200).json({ success: true, labels: taskWithLabels?.labels.map((l) => l.label) || [] });
-    return;
+    const taskLabels = await prisma.taskLabel.findMany({
+      where: { taskId },
+      select: { labelId: true, isActive: true },
+    });
+
+    const labelsWithStatus = workspaceLabels.map((label) => {
+      const assigned = taskLabels.find((tl) => tl.labelId === label.id);
+      return {
+        ...label,
+        isActive: assigned ? assigned.isActive : false,
+      };
+    });
+    res.status(200).json({ success: true, labels: labelsWithStatus });
   } catch (error) {
-    console.error('deleteTaskLabel error:', error);
-    res.status(500).json({ error: 'Something went wrong.' });
-    return;
+    console.error('toggleTaskLabel error:', error);
+    res.status(500).json({ message: 'Something went wrong.' });
   }
 }
