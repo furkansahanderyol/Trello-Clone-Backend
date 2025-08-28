@@ -4,7 +4,6 @@ import fs from 'fs';
 import path from 'path';
 import { changeFileLocation } from '../helpers/changeFileLocation';
 import { PrismaClient } from '@prisma/client';
-import { connect } from 'http2';
 
 interface CustomJwtPayload extends jwt.JwtPayload {
   id: string;
@@ -60,6 +59,18 @@ export async function getTaskData(req: Request, res: Response) {
           workspace: true,
         },
       },
+      labels: {
+        where: { isActive: true },
+        select: {
+          label: {
+            select: {
+              id: true,
+              name: true,
+              color: true,
+            },
+          },
+        },
+      },
 
       comments: {
         include: {
@@ -79,6 +90,11 @@ export async function getTaskData(req: Request, res: Response) {
       },
     },
   });
+
+  if (!task) {
+    res.status(404).json({ message: 'Task not found' });
+    return;
+  }
 
   res.status(200).json(task);
 }

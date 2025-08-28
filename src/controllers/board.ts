@@ -61,6 +61,22 @@ export async function getAllBoards(req: Request, res: Response) {
               orderBy: {
                 order: 'asc',
               },
+              include: {
+                labels: {
+                  where: {
+                    isActive: true,
+                  },
+                  select: {
+                    label: {
+                      select: {
+                        id: true,
+                        name: true,
+                        color: true,
+                      },
+                    },
+                  },
+                },
+              },
             },
             members: true,
           },
@@ -159,7 +175,6 @@ export async function updateBoardTasks(req: Request, res: Response) {
 
   try {
     if (newBoardId === previousBoardId) {
-      // 1. Board’un gerçekten workspace’e ait olduğunu doğrula
       const board = await prisma.board.findFirst({
         where: {
           id: previousBoardId,
@@ -172,20 +187,17 @@ export async function updateBoardTasks(req: Request, res: Response) {
         return;
       }
 
-      // 2. O board’daki tüm task’leri sıraya göre al
       const tasks = await prisma.task.findMany({
         where: { boardId: previousBoardId },
         orderBy: { order: 'asc' },
       });
 
-      // 3. Taşınacak task’i bul
       const movingTask = tasks.find((t) => t.id === taskId);
       if (!movingTask) {
         res.status(404).json({ message: 'Task not found in the specified board.' });
         return;
       }
 
-      // 4. Listeden çıkar ve sıralamayı ayarla
       const updatedTasks = tasks
         .filter((t) => t.id !== taskId)
         .map((task, index) => {
@@ -201,10 +213,8 @@ export async function updateBoardTasks(req: Request, res: Response) {
           return { ...task, order: index };
         });
 
-      // 5. Taşınan görevi yeni konumuna ekle
       updatedTasks.splice(newIndex, 0, { ...movingTask, order: newIndex });
 
-      // 6. Güncellemeleri topluca işle
       await prisma.$transaction(
         updatedTasks.map((task) =>
           prisma.task.update({
