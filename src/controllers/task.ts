@@ -719,13 +719,15 @@ export async function getTaskLabelsWithStatus(req: Request, res: Response) {
 
     const taskLabels = await prisma.taskLabel.findMany({
       where: { taskId },
-      select: { labelId: true, isActive: true },
+      select: { labelId: true, isActive: true, label: true },
     });
 
     const labelsWithStatus = workspaceLabels.map((label) => {
       const taskLabel = taskLabels.find((tl) => tl.labelId === label.id);
       return {
-        ...label,
+        label: {
+          ...label,
+        },
         isActive: taskLabel ? taskLabel.isActive : false,
       };
     });
@@ -766,24 +768,12 @@ export async function toggleTaskLabel(req: Request, res: Response) {
       });
     }
 
-    const workspaceLabels = await prisma.label.findMany({
-      where: { workspaceId },
-      select: { id: true, name: true, color: true },
-    });
-
     const taskLabels = await prisma.taskLabel.findMany({
       where: { taskId },
-      select: { labelId: true, isActive: true },
+      select: { labelId: true, isActive: true, label: true },
     });
 
-    const labelsWithStatus = workspaceLabels.map((label) => {
-      const assigned = taskLabels.find((tl) => tl.labelId === label.id);
-      return {
-        ...label,
-        isActive: assigned ? assigned.isActive : false,
-      };
-    });
-    res.status(200).json({ success: true, labels: labelsWithStatus });
+    res.status(200).json({ success: true, labels: taskLabels });
   } catch (error) {
     console.error('toggleTaskLabel error:', error);
     res.status(500).json({ message: 'Something went wrong.' });

@@ -31,6 +31,20 @@ export default function setupWebSocketServer(server: http.Server) {
                 orderBy: {
                   order: 'asc',
                 },
+                include: {
+                  labels: {
+                    where: { isActive: true },
+                    select: {
+                      label: {
+                        select: {
+                          id: true,
+                          name: true,
+                          color: true,
+                        },
+                      },
+                    },
+                  },
+                },
               },
             },
             orderBy: {
