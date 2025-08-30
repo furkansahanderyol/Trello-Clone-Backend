@@ -391,3 +391,44 @@ export async function changePassword(req: Request, res: Response) {
     res.status(500).json({ message: 'Server error' });
   }
 }
+
+export async function searchUser(req: Request, res: Response) {
+  const token = req.cookies['access-token'];
+  const payload = jwt.verify(token, process.env.JWT_ACCESS_TOKEN_SECRET!) as CustomJwtPayload;
+
+  if (!token) {
+    res.status(400).json({ message: 'Invalid token.' });
+    return;
+  }
+
+  if (!payload) {
+    res.status(403).json({ message: 'Invalid or expired authorization token.' });
+    return;
+  }
+
+  const { input } = req.body;
+
+  try {
+    const users = await prisma.user.findMany({
+      where: {
+        id: {
+          not: payload.id,
+        },
+        OR: [{ email: { contains: input, mode: 'insensitive' } }, { name: { contains: input, mode: 'insensitive' } }],
+      },
+      select: {
+        name: true,
+        surname: true,
+        email: true,
+        profileImage: true,
+        isVerified: true,
+      },
+      take: 10,
+    });
+
+    res.json(users);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Something went wrong.' });
+  }
+}

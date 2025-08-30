@@ -9,6 +9,7 @@ import {
   register,
   registerSuccess,
   resendVerificationCode,
+  searchUser,
   updateProfileImage,
 } from '../controllers/user';
 import passport from '../config/passport';
@@ -25,6 +26,7 @@ router.post('/logout', logout);
 router.get('/check-verified', checkVerified);
 router.get('/get-user', getUser);
 router.post('/change-password', changePassword);
+router.post('/search-user', searchUser);
 
 // Sends user to the select their mail.
 router.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
