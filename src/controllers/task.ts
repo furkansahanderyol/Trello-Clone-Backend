@@ -626,6 +626,7 @@ export async function editWorkspaceLabel(req: Request, res: Response) {
     const labels = await prisma.label.findMany({
       where: { workspaceId },
       select: { id: true, name: true, color: true },
+      orderBy: { order: 'asc' },
     });
 
     res.status(200).json({ success: true, labels: labels });
@@ -651,7 +652,7 @@ export async function deleteWorkspaceLabel(req: Request, res: Response) {
     return;
   }
 
-  const { workspaceId, labelId } = req.body;
+  const { workspaceId, taskId, labelId } = req.body;
 
   if (!workspaceId || !labelId) {
     res.status(400).json({ message: 'Missing required fields.' });
@@ -676,9 +677,12 @@ export async function deleteWorkspaceLabel(req: Request, res: Response) {
       where: { id: labelId },
     });
 
-    const labels = await prisma.label.findMany({
-      where: { workspaceId },
-      select: { id: true, name: true, color: true },
+    const labels = await prisma.taskLabel.findMany({
+      where: { taskId },
+      include: {
+        label: true,
+      },
+      orderBy: { order: 'asc' },
     });
 
     res.status(200).json({ success: true, labels: labels });
@@ -728,6 +732,7 @@ export async function getTaskLabelsWithStatus(req: Request, res: Response) {
         label: {
           ...label,
         },
+        orderBy: { order: 'asc' },
         isActive: taskLabel ? taskLabel.isActive : false,
       };
     });
@@ -770,7 +775,10 @@ export async function toggleTaskLabel(req: Request, res: Response) {
 
     const taskLabels = await prisma.taskLabel.findMany({
       where: { taskId },
-      select: { labelId: true, isActive: true, label: true },
+      include: {
+        label: true,
+      },
+      orderBy: { order: 'asc' },
     });
 
     res.status(200).json({ success: true, labels: taskLabels });
