@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
+import { workspaceService } from '../services/workspaceService';
 
 const prisma = new PrismaClient();
 
@@ -122,4 +123,59 @@ export async function getWorkspace(req: Request, res: Response) {
 
   res.status(200).json(workspaceData);
   return;
+}
+
+export async function inviteUsers(req: Request, res: Response) {
+  const token = req.cookies['access-token'];
+
+  if (!token) {
+    res.status(400).json({ message: 'Invalid user.' });
+    return;
+  }
+
+  let payload;
+
+  try {
+    payload = jwt.verify(token, process.env.JWT_ACCESS_TOKEN_SECRET!) as CustomJwtPayload;
+  } catch (error) {
+    res.status(403).json({ message: 'Invalid or expired authorization token.' });
+    return;
+  }
+
+  const invitedById = await prisma.user.findFirst({
+    where: { email: payload.email },
+  });
+
+  if (!invitedById) {
+    res.status(404).json({ message: 'User cannot be found.' });
+    return;
+  }
+
+  const { workspaceId, invitedEmails, message } = req.body;
+
+  if (!workspaceId || !Array.isArray(invitedEmails)) {
+    res.status(400).json({ message: 'workspaceId and invitedEmails are required.' });
+    return;
+  }
+
+  try {
+    const users = await prisma.user.findMany({
+      where: { email: { in: invitedEmails } },
+    });
+
+    if (users.length === 0) {
+      res.status(404).json({ message: 'No users found with provided emails.' });
+      return;
+    }
+
+    const invitedUserIds = users.map((user) => user.id);
+
+    const invites = await workspaceService.inviteUsers(workspaceId, invitedUserIds, invitedById?.id, message);
+
+    res.status(200).json({ message: 'Invitations sent successfully.', invites });
+    return;
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Something went wrong.' });
+  }
 }

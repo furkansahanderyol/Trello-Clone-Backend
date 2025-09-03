@@ -1,11 +1,11 @@
 import { Server } from 'socket.io';
 import http from 'http';
-import { PrismaClient } from '@prisma/client';
+import { updateBoard } from './boardEvents/updateBoard';
 
-const prisma = new PrismaClient();
+export let io: Server;
 
 export default function setupWebSocketServer(server: http.Server) {
-  const io = new Server(server, {
+  io = new Server(server, {
     cors: {
       origin: 'http://localhost:3000',
       credentials: true,
@@ -17,46 +17,6 @@ export default function setupWebSocketServer(server: http.Server) {
       console.log('a user connected');
     });
 
-    socket.on('update_board', async (message) => {
-      const parsedMessage = JSON.parse(message);
-      const workspace = await prisma.workspace.findFirst({
-        where: {
-          id: parsedMessage.workspaceId,
-        },
-        include: {
-          boards: {
-            include: {
-              members: true,
-              tasks: {
-                orderBy: {
-                  order: 'asc',
-                },
-                include: {
-                  labels: {
-                    where: { isActive: true },
-                    select: {
-                      label: {
-                        select: {
-                          id: true,
-                          name: true,
-                          color: true,
-                        },
-                      },
-                    },
-                  },
-                },
-              },
-            },
-            orderBy: {
-              order: 'asc',
-            },
-          },
-        },
-      });
-
-      if (workspace) {
-        io.emit('board_updated', workspace?.boards);
-      }
-    });
+    socket.on('update_board', updateBoard);
   });
 }

@@ -8,14 +8,14 @@ datasource db {
 }
 
 model User {
-  id                 String  @id @default(uuid())
-  email              String  @unique
+  id                 String             @id @default(uuid())
+  email              String             @unique
   password           String?
   name               String
   surname            String
-  isVerified         Boolean @default(false)
-  provider           String  @default("credentials")
-  googleId           String? @unique
+  isVerified         Boolean            @default(false)
+  provider           String             @default("credentials")
+  googleId           String?            @unique
   profileImage       String?
 
   boards             BoardMember[]
@@ -23,19 +23,27 @@ model User {
   workspaces         WorkspaceMember[]
   createdWorkspaces  Workspace[]        @relation("CreatedWorkspaces")
   comments           Comment[]
+
+  invitesSent        WorkspaceInvite[]  @relation("InvitesSent")
+  invitesReceived    WorkspaceInvite[]  @relation("InvitesReceived")
+
+  notifications      Notification[]     @relation("UserNotifications")       
+  sentNotifications  Notification[]     @relation("SentNotifications")       
 }
 
+
 model Workspace {
-  id         String   @id @default(uuid())
+  id         String            @id @default(uuid())
   name       String
   color      String
-  createdAt  DateTime @default(now())
+  createdAt  DateTime          @default(now())
   createdBy  String
 
-  creator    User     @relation("CreatedWorkspaces", fields: [createdBy], references: [id])
+  creator    User              @relation("CreatedWorkspaces", fields: [createdBy], references: [id])
   members    WorkspaceMember[]
   boards     Board[]
   labels     Label[]
+  invites    WorkspaceInvite[]
 }
 
 model WorkspaceMember {
@@ -138,4 +146,31 @@ model TaskLabel {
   label    Label @relation(fields: [labelId], references: [id])
 
   @@id([taskId, labelId])
+}
+
+model Notification {
+  id         String   @id @default(uuid())
+  type       String
+  message    String
+  createdAt  DateTime @default(now())
+  read       Boolean  @default(false)
+
+  userId     String
+  senderId   String?
+
+  user       User     @relation("UserNotifications", fields: [userId], references: [id])
+  sender     User?    @relation("SentNotifications", fields: [senderId], references: [id])
+}
+
+model WorkspaceInvite {
+  id            String    @id @default(uuid())
+  workspaceId   String
+  invitedUserId String
+  invitedById   String
+  status        String    @default("pending")
+  createdAt     DateTime  @default(now())
+
+  workspace     Workspace @relation(fields: [workspaceId], references: [id])
+  invitedUser   User      @relation("InvitesReceived", fields: [invitedUserId], references: [id])
+  invitedBy     User      @relation("InvitesSent", fields: [invitedById], references: [id])
 }
