@@ -8,8 +8,8 @@ import redis, { redisClient } from '../lib/redis';
 import bcrypt from 'bcrypt';
 import { generateToken } from '../lib/generateToken';
 import jwt from 'jsonwebtoken';
-import { setTokenCookie } from '../helpers/setTokenCookie';
 import { changePasswordSchema } from '../schemas/changePasswordSchema';
+import { setTokenCookie } from '../helpers/setTokenCookie';
 
 const prisma = new PrismaClient();
 
@@ -32,8 +32,15 @@ export async function login(req: Request, res: Response) {
 
   const accessToken = generateToken(
     user?.id,
-    { email: email, isVerified: user?.isVerified! },
+    { email: user.email, isVerified: user?.isVerified! },
     process.env.JWT_ACCESS_TOKEN_SECRET!,
+    '7d',
+  );
+
+  const wsToken = generateToken(
+    user.id,
+    { email: user.email, isVerified: user.isVerified },
+    process.env.JWT_SOCKET_ACCESS_TOKEN_SECRET!,
     '7d',
   );
 
@@ -47,7 +54,9 @@ export async function login(req: Request, res: Response) {
     return;
   }
 
-  setTokenCookie(res, accessToken);
+  setTokenCookie(res, 'socket-token', wsToken, false);
+  setTokenCookie(res, 'access-token', accessToken, true);
+
   res.status(200).json({
     message: 'Welcome back.',
   });
@@ -94,7 +103,7 @@ export async function register(req: Request, res: Response): Promise<void> {
 
     sendVerificationCode(email);
 
-    setTokenCookie(res, verifyToken);
+    setTokenCookie(res, 'access-token', verifyToken, true);
     res.status(201).json({
       message: 'Registration successful! Please verify your email for access all the features.',
       user: newUser,
@@ -163,7 +172,7 @@ export async function registerSuccess(req: Request, res: Response) {
       '7d',
     );
 
-    setTokenCookie(res, accessToken);
+    setTokenCookie(res, 'access-token', accessToken, true);
     res.status(200).json({ message: 'Your account is verified successfully.' });
     await redisClient.del(redisKey);
     return;
@@ -268,7 +277,15 @@ export async function authGoogle(req: Request, res: Response) {
     '7d',
   );
 
-  setTokenCookie(res, cookie);
+  const wsToken = generateToken(
+    user.id,
+    { email: user.email, isVerified: user.isVerified },
+    process.env.JWT_SOCKET_ACCESS_TOKEN_SECRET!,
+    '7d',
+  );
+
+  setTokenCookie(res, 'socket-token', wsToken, false);
+  setTokenCookie(res, 'access-token', cookie, true);
 
   res.redirect('http://localhost:3000/dashboard');
 }
