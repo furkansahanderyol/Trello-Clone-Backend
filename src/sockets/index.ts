@@ -1,10 +1,12 @@
 import { Server } from 'socket.io';
 import http from 'http';
 import { updateBoard } from './boardEvents/updateBoard';
-import { inviteUser } from './workspaceEvents/inviteUser';
-import jwt from 'jsonwebtoken';
+import { inviteUsers } from './workspaceEvents/inviteUsers';
+import jwt, { JwtPayload } from 'jsonwebtoken';
 
 export let io: Server;
+
+export const userSockets = new Map<string, string>();
 
 export default function setupWebSocketServer(server: http.Server) {
   io = new Server(server, {
@@ -22,7 +24,10 @@ export default function setupWebSocketServer(server: http.Server) {
     }
 
     try {
-      jwt.verify(authToken, process.env.JWT_SOCKET_ACCESS_TOKEN_SECRET!);
+      const decoded = jwt.verify(authToken, process.env.JWT_SOCKET_ACCESS_TOKEN_SECRET!) as JwtPayload;
+
+      (socket as any).userId = decoded.id;
+
       next();
     } catch (error) {
       return next(new Error('Authentication error: Invalid token.'));
@@ -30,11 +35,20 @@ export default function setupWebSocketServer(server: http.Server) {
   });
 
   io.on('connection', (socket) => {
-    socket.on('connect', () => {
-      console.log('a user connected');
-    });
+    const userId = (socket as any).userId;
 
+    if (userId) {
+      userSockets.set(userId, socket.id);
+      console.log(`User ${userId} connected with socket ${socket.id}`);
+    }
+
+    socket.on('disconnect', () => {
+      if (userId) {
+        userSockets.delete(userId);
+        console.log(`User ${userId} disconnected`);
+      }
+    });
     socket.on('update_board', updateBoard);
-    socket.on('test', inviteUser);
+    socket.on('invite_users', inviteUsers);
   });
 }
