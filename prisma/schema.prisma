@@ -8,42 +8,42 @@ datasource db {
 }
 
 model User {
-  id                 String             @id @default(uuid())
-  email              String             @unique
-  password           String?
-  name               String
-  surname            String
-  isVerified         Boolean            @default(false)
-  provider           String             @default("credentials")
-  googleId           String?            @unique
-  profileImage       String?
+  id                String            @id @default(uuid())
+  email             String            @unique
+  password          String?
+  name              String
+  surname           String
+  isVerified        Boolean           @default(false)
+  provider          String            @default("credentials")
+  googleId          String?           @unique
+  profileImage      String?
 
-  boards             BoardMember[]
-  tasks              Task[]             @relation("AssignedTasks")
-  workspaces         WorkspaceMember[]
-  createdWorkspaces  Workspace[]        @relation("CreatedWorkspaces")
-  comments           Comment[]
+  boards            BoardMember[]
+  tasks             Task[]            @relation("AssignedTasks")
+  workspaces        WorkspaceMember[]
+  createdWorkspaces Workspace[]       @relation("CreatedWorkspaces")
+  comments          Comment[]
 
-  invitesSent        WorkspaceInvite[]  @relation("InvitesSent")
-  invitesReceived    WorkspaceInvite[]  @relation("InvitesReceived")
+  invitesSent       WorkspaceInvite[] @relation("InvitesSent")
+  invitesReceived   WorkspaceInvite[] @relation("InvitesReceived")
 
-  notifications      Notification[]     @relation("UserNotifications")       
-  sentNotifications  Notification[]     @relation("SentNotifications")       
+  notifications     Notification[]    @relation("UserNotifications")      
+  sentNotifications Notification[]    @relation("SentNotifications")      
 }
 
-
 model Workspace {
-  id         String            @id @default(uuid())
-  name       String
-  color      String
-  createdAt  DateTime          @default(now())
-  createdBy  String
+  id        String            @id @default(uuid())
+  name      String
+  color     String
+  createdAt DateTime          @default(now())
+  createdBy String
 
-  creator    User              @relation("CreatedWorkspaces", fields: [createdBy], references: [id])
-  members    WorkspaceMember[]
-  boards     Board[]
-  labels     Label[]
-  invites    WorkspaceInvite[]
+  creator   User              @relation("CreatedWorkspaces", fields: [createdBy], references: [id])
+  members   WorkspaceMember[]
+  boards    Board[]
+  labels    Label[]
+  invites   WorkspaceInvite[]
+  notifications Notification[]
 }
 
 model WorkspaceMember {
@@ -59,47 +59,47 @@ model WorkspaceMember {
 }
 
 model Board {
-  id          String   @id @default(uuid())
+  id          String        @id @default(uuid())
   title       String
-  createdAt   DateTime @default(now())
+  createdAt   DateTime      @default(now())
   order       Int
   workspaceId String
 
-  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id])
   members     BoardMember[]
   tasks       Task[]
 }
 
 model BoardMember {
-  id       String @id @default(uuid())
-  userId   String
-  boardId  String
-  role     String @default("member")
+  id      String @id @default(uuid())
+  userId  String
+  boardId String
+  role    String @default("member")
 
-  user     User  @relation(fields: [userId], references: [id])
-  board    Board @relation(fields: [boardId], references: [id])
+  user    User   @relation(fields: [userId], references: [id])
+  board   Board  @relation(fields: [boardId], references: [id])
 
   @@unique([userId, boardId])
 }
 
 model Task {
-  id            String     @id @default(uuid())
-  title         String
-  description   Json?
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
-  order         Int       
-  dueDate       DateTime?
+  id           String       @id @default(uuid())
+  title        String
+  description  Json?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  order        Int          
+  dueDate      DateTime?
 
-  boardId       String
-  assignedToId  String?
+  boardId      String
+  assignedToId String?
 
-  board         Board      @relation(fields: [boardId], references: [id])
-  assignedTo    User?      @relation("AssignedTasks", fields: [assignedToId], references: [id])
+  board        Board        @relation(fields: [boardId], references: [id])
+  assignedTo   User?        @relation("AssignedTasks", fields: [assignedToId], references: [id])
 
-  comments      Comment[]
-  attachments   Attachment[]
-  labels        TaskLabel[]
+  comments     Comment[]
+  attachments  Attachment[]
+  labels       TaskLabel[]
 }
 
 model Comment {
@@ -107,7 +107,7 @@ model Comment {
   content   String
   createdAt DateTime @default(now())
   order     Int      @default(0)
- 
+
   taskId    String
   authorId  String
 
@@ -126,13 +126,13 @@ model Attachment {
 }
 
 model Label {
-  id          String   @id @default(uuid())
+  id          String      @id @default(uuid())
   name        String
   color       String
   workspaceId String
-  order       Int      @default(0)
+  order       Int         @default(0)
 
-  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  workspace   Workspace   @relation(fields: [workspaceId], references: [id])
   tasks       TaskLabel[]
 }
 
@@ -142,35 +142,41 @@ model TaskLabel {
   isActive Boolean @default(false)
   order    Int     @default(0)
 
-  task     Task  @relation(fields: [taskId], references: [id])
-  label    Label @relation(fields: [labelId], references: [id])
+  task     Task    @relation(fields: [taskId], references: [id])
+  label    Label   @relation(fields: [labelId], references: [id])
 
   @@id([taskId, labelId])
 }
 
 model Notification {
-  id         String   @id @default(uuid())
-  type       String
-  message    String
-  createdAt  DateTime @default(now())
-  read       Boolean  @default(false)
+  id          String   @id @default(uuid())
+  type        String
+  message     String
+  createdAt   DateTime @default(now())
+  read        Boolean  @default(false)
 
-  userId     String
-  senderId   String?
+  userId      String
+  senderId    String?
+  inviteId    String?
+  workspaceId String?
 
-  user       User     @relation("UserNotifications", fields: [userId], references: [id])
-  sender     User?    @relation("SentNotifications", fields: [senderId], references: [id])
+  user        User             @relation("UserNotifications", fields: [userId], references: [id])
+  sender      User?            @relation("SentNotifications", fields: [senderId], references: [id])
+  invite      WorkspaceInvite? @relation(fields: [inviteId], references: [id])
+  workspace   Workspace?       @relation(fields: [workspaceId], references: [id])
 }
 
 model WorkspaceInvite {
-  id            String    @id @default(uuid())
+  id            String         @id @default(uuid())
   workspaceId   String
   invitedUserId String
   invitedById   String
-  status        String    @default("pending")
-  createdAt     DateTime  @default(now())
+  status        String         @default("pending")
+  createdAt     DateTime       @default(now())
 
-  workspace     Workspace @relation(fields: [workspaceId], references: [id])
-  invitedUser   User      @relation("InvitesReceived", fields: [invitedUserId], references: [id])
-  invitedBy     User      @relation("InvitesSent", fields: [invitedById], references: [id])
+  workspace     Workspace      @relation(fields: [workspaceId], references: [id])
+  invitedUser   User           @relation("InvitesReceived", fields: [invitedUserId], references: [id])
+  invitedBy     User           @relation("InvitesSent", fields: [invitedById], references: [id])
+
+  notifications Notification[]
 }

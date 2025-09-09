@@ -25,8 +25,7 @@ export default function setupWebSocketServer(server: http.Server) {
 
     try {
       const decoded = jwt.verify(authToken, process.env.JWT_SOCKET_ACCESS_TOKEN_SECRET!) as JwtPayload;
-
-      (socket as any).userId = decoded.id;
+      (socket as any).email = decoded.email;
 
       next();
     } catch (error) {
@@ -35,17 +34,17 @@ export default function setupWebSocketServer(server: http.Server) {
   });
 
   io.on('connection', (socket) => {
-    const userId = (socket as any).userId;
+    const userEmail = (socket as any).email;
 
-    if (userId) {
-      userSockets.set(userId, socket.id);
-      console.log(`User ${userId} connected with socket ${socket.id}`);
+    if (userEmail) {
+      userSockets.set(userEmail, socket.id);
+      console.log(`User ${userEmail} connected with socket ${socket.id}`);
     }
 
     socket.on('disconnect', () => {
-      if (userId) {
-        userSockets.delete(userId);
-        console.log(`User ${userId} disconnected`);
+      if (userEmail) {
+        userSockets.delete(userEmail);
+        console.log(`User ${userEmail} disconnected`);
       }
     });
     socket.on('update_board', updateBoard);

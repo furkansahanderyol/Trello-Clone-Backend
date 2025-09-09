@@ -449,3 +449,37 @@ export async function searchUser(req: Request, res: Response) {
     res.status(500).json({ message: 'Something went wrong.' });
   }
 }
+
+export async function getUserNotifications(req: Request, res: Response) {
+  const token = req.cookies['access-token'];
+  const payload = jwt.verify(token, process.env.JWT_ACCESS_TOKEN_SECRET!) as CustomJwtPayload;
+
+  if (!token) {
+    res.status(400).json({ message: 'Invalid token.' });
+    return;
+  }
+
+  if (!payload) {
+    res.status(403).json({ message: 'Invalid or expired authorization token.' });
+    return;
+  }
+
+  const userId = payload.id;
+
+  try {
+    const notifications = await prisma.notification.findMany({
+      where: {
+        userId: userId,
+        read: false,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    res.status(200).json({ count: notifications.length, notifications });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: 'Internal server error.' });
+  }
+}

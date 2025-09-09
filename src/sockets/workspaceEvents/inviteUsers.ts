@@ -17,7 +17,7 @@ export async function inviteUsers(users: string) {
   }
 
   findUsers.forEach((user) => {
-    const socketId = userSockets.get(user.id);
+    const socketId = userSockets.get(user.email);
 
     if (socketId) {
       io.to(socketId).emit('invite_users', {

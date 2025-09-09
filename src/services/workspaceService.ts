@@ -26,16 +26,15 @@ export class workspaceService {
           },
         });
 
-        if (message) {
-          await prisma.notification.create({
-            data: {
-              type: 'workspace-invite',
-              message,
-              userId: id,
-              senderId: invitedById,
-            },
-          });
-        }
+        await prisma.notification.create({
+          data: {
+            type: 'workspace-invite',
+            message,
+            userId: id,
+            senderId: invitedById,
+            workspaceId: invite.workspaceId,
+          },
+        });
 
         return invite;
       }),
