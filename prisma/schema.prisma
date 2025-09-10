@@ -149,21 +149,26 @@ model TaskLabel {
 }
 
 model Notification {
-  id          String   @id @default(uuid())
-  type        String
-  message     String
-  createdAt   DateTime @default(now())
-  read        Boolean  @default(false)
+  id                 String   @id @default(uuid())
+  type               String
+  message            String
+  createdAt          DateTime @default(now())
+  read               Boolean  @default(false)
 
-  userId      String
-  senderId    String?
-  inviteId    String?
-  workspaceId String?
+  userId             String
+  senderId           String?
+  inviteId           String?
+  workspaceId        String?
+  
+  senderName         String?
+  senderProfileImage String?
+  workspaceName      String?
+  senderSurname      String? 
 
-  user        User             @relation("UserNotifications", fields: [userId], references: [id])
-  sender      User?            @relation("SentNotifications", fields: [senderId], references: [id])
-  invite      WorkspaceInvite? @relation(fields: [inviteId], references: [id])
-  workspace   Workspace?       @relation(fields: [workspaceId], references: [id])
+  user               User             @relation("UserNotifications", fields: [userId], references: [id])
+  sender             User?            @relation("SentNotifications", fields: [senderId], references: [id])
+  invite             WorkspaceInvite? @relation(fields: [inviteId], references: [id])
+  workspace          Workspace?       @relation(fields: [workspaceId], references: [id])
 }
 
 model WorkspaceInvite {

@@ -16,6 +16,30 @@ export class workspaceService {
   }
 
   static async inviteUsers(workspaceId: string, invitedUserIds: string[], invitedById: string, message: string) {
+    const sender = await prisma.user.findUnique({
+      where: {
+        id: invitedById,
+      },
+      select: {
+        name: true,
+        surname: true,
+        profileImage: true,
+      },
+    });
+
+    const workspace = await prisma.workspace.findUnique({
+      where: {
+        id: workspaceId,
+      },
+      select: {
+        name: true,
+      },
+    });
+
+    if (!sender || !workspace) {
+      throw new Error('Sender or workspace not found.');
+    }
+
     const invites = await Promise.all(
       invitedUserIds.map(async (id) => {
         const invite = await prisma.workspaceInvite.create({
@@ -33,6 +57,10 @@ export class workspaceService {
             userId: id,
             senderId: invitedById,
             workspaceId: invite.workspaceId,
+            senderName: sender.name,
+            senderProfileImage: sender.profileImage,
+            senderSurname: sender.surname,
+            workspaceName: workspace.name,
           },
         });
 

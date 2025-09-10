@@ -47,6 +47,7 @@ export default function setupWebSocketServer(server: http.Server) {
         console.log(`User ${userEmail} disconnected`);
       }
     });
+
     socket.on('update_board', updateBoard);
     socket.on('invite_users', inviteUsers);
   });
