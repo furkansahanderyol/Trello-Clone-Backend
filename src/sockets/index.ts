@@ -3,10 +3,13 @@ import http from 'http';
 import { updateBoard } from './boardEvents/updateBoard';
 import { inviteUsers } from './workspaceEvents/inviteUsers';
 import jwt, { JwtPayload } from 'jsonwebtoken';
+import { PrismaClient } from '@prisma/client';
 
 export let io: Server;
 
 export const userSockets = new Map<string, string>();
+
+const prisma = new PrismaClient();
 
 export default function setupWebSocketServer(server: http.Server) {
   io = new Server(server, {
@@ -46,6 +49,48 @@ export default function setupWebSocketServer(server: http.Server) {
         userSockets.delete(userEmail);
         console.log(`User ${userEmail} disconnected`);
       }
+    });
+
+    socket.on('leave_room', (workspaceId: string) => {
+      socket.leave(workspaceId);
+      console.log(`User ${userEmail} left room: ${workspaceId}`);
+    });
+
+    socket.on('join_room', async (workspaceId: string) => {
+      if (!userEmail) {
+        socket.emit('error', 'Authentication required to join a room.');
+        return;
+      }
+
+      const user = await prisma.user.findUnique({
+        where: { email: userEmail },
+        select: { id: true },
+      });
+
+      if (!user) {
+        socket.emit('error', 'User not found.');
+        return;
+      }
+
+      const isMember = await prisma.workspaceMember.findUnique({
+        where: {
+          workspaceId_userId: {
+            workspaceId: workspaceId,
+            userId: user.id,
+          },
+        },
+      });
+
+      if (isMember) {
+        socket.join(workspaceId);
+        console.log(`User ${userEmail} joined room: ${workspaceId}`);
+      } else {
+        socket.emit('error', 'Not authorized to access this workspace.');
+        console.warn(`Unauthorized attempt by ${userEmail} to join room: ${workspaceId}`);
+      }
+
+      socket.join(workspaceId);
+      console.log(`User ${socket.id} joined room: ${workspaceId}`);
     });
 
     socket.on('update_board', updateBoard);

@@ -179,3 +179,91 @@ export async function inviteUsers(req: Request, res: Response) {
     res.status(500).json({ error: 'Something went wrong.' });
   }
 }
+
+export async function acceptWorkspaceInvite(req: Request, res: Response) {
+  const token = req.cookies['access-token'];
+
+  if (!token) {
+    res.status(400).json({ message: 'Invalid user.' });
+    return;
+  }
+
+  let payload;
+
+  try {
+    payload = jwt.verify(token, process.env.JWT_ACCESS_TOKEN_SECRET!) as CustomJwtPayload;
+  } catch (error) {
+    res.status(403).json({ message: 'Invalid or expired authorization token.' });
+    return;
+  }
+
+  const invitedUser = await prisma.user.findUnique({
+    where: { email: payload.email },
+    select: { id: true, email: true },
+  });
+
+  if (!invitedUser) {
+    res.status(404).json({ message: 'User cannot be found.' });
+    return;
+  }
+
+  const { workspaceId, email } = req.body;
+
+  if (!workspaceId) {
+    res.status(400).json({ message: 'Missing workspace ID.' });
+    return;
+  }
+
+  try {
+    const invite = await prisma.workspaceInvite.findFirst({
+      where: {
+        workspaceId: workspaceId,
+        invitedUserId: invitedUser.id,
+        status: 'pending',
+      },
+    });
+
+    console.log('invite', invite);
+
+    if (!invite) {
+      res.status(404).json({ message: 'Pending invite not found for this user and workspace.' });
+      return;
+    }
+
+    await prisma.$transaction([
+      prisma.workspaceInvite.update({
+        where: {
+          id: invite.id,
+        },
+        data: {
+          status: 'accepted',
+        },
+      }),
+
+      prisma.workspaceMember.create({
+        data: {
+          workspaceId: workspaceId,
+          userId: invitedUser.id,
+          role: 'member',
+        },
+      }),
+
+      prisma.notification.updateMany({
+        where: {
+          inviteId: invite.id,
+          userId: invitedUser.id,
+          read: false,
+        },
+        data: {
+          read: true,
+        },
+      }),
+    ]);
+
+    res.status(200).json({ message: 'Success.' });
+    return;
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Something went wrong.' });
+  }
+}
