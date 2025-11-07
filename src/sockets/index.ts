@@ -88,9 +88,6 @@ export default function setupWebSocketServer(server: http.Server) {
         socket.emit('error', 'Not authorized to access this workspace.');
         console.warn(`Unauthorized attempt by ${userEmail} to join room: ${workspaceId}`);
       }
-
-      socket.join(workspaceId);
-      console.log(`User ${socket.id} joined room: ${workspaceId}`);
     });
 
     socket.on('update_board', updateBoard);

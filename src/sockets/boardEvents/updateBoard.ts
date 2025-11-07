@@ -41,6 +41,6 @@ export async function updateBoard(message: string) {
   });
 
   if (workspace) {
-    io.emit('board_updated', workspace?.boards);
+    io.to(workspace.id).emit('board_updated', workspace?.boards);
   }
 }
