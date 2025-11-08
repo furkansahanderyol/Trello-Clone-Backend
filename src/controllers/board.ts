@@ -422,10 +422,10 @@ export async function addTask(req: Request, res: Response) {
         title: title,
         boardId: boardId,
         order: nextOrder,
-        assignedToId: dbUser.id,
       },
     });
     res.status(200).json({ message: 'Board updated.' });
+    return;
   } catch (error) {
     console.error(error);
     res.status(400).json({ error: error });

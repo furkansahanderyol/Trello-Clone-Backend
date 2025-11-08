@@ -223,8 +223,6 @@ export async function acceptWorkspaceInvite(req: Request, res: Response) {
       },
     });
 
-    console.log('invite', invite);
-
     if (!invite) {
       res.status(404).json({ message: 'Pending invite not found for this user and workspace.' });
       return;
@@ -262,6 +260,89 @@ export async function acceptWorkspaceInvite(req: Request, res: Response) {
 
     res.status(200).json({ message: 'Success.' });
     return;
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Something went wrong.' });
+  }
+}
+
+export async function getWorkspaceMembers(req: Request, res: Response) {
+  const token = req.cookies['access-token'];
+
+  if (!token) {
+    res.status(400).json({ message: 'Invalid user.' });
+    return;
+  }
+
+  let payload;
+
+  try {
+    payload = jwt.verify(token, process.env.JWT_ACCESS_TOKEN_SECRET!) as CustomJwtPayload;
+  } catch (error) {
+    res.status(403).json({ message: 'Invalid or expired authorization token.' });
+    return;
+  }
+
+  const { id } = req.params;
+
+  if (!id) {
+    res.status(400).json({ message: 'Workspace ID is required.' });
+    return;
+  }
+
+  try {
+    const requestingUser = await prisma.user.findUnique({
+      where: { email: payload.email },
+      select: { id: true },
+    });
+
+    if (!requestingUser) {
+      res.status(404).json({ message: 'Requesting user not found.' });
+      return;
+    }
+
+    const isMember = await prisma.workspaceMember.findUnique({
+      where: {
+        workspaceId_userId: {
+          workspaceId: id,
+          userId: requestingUser.id,
+        },
+      },
+    });
+
+    if (!isMember) {
+      res.status(403).json({ message: 'You are not authorized to view members of this workspace.' });
+      return;
+    }
+
+    const members = await prisma.workspaceMember.findMany({
+      where: {
+        workspaceId: id,
+        userId: {
+          not: requestingUser.id,
+        },
+      },
+      include: {
+        user: {
+          select: {
+            name: true,
+            surname: true,
+            email: true,
+            profileImage: true,
+          },
+        },
+      },
+      orderBy: {
+        role: 'asc',
+      },
+    });
+
+    res.status(200).json({
+      members: members.map((member) => ({
+        ...member.user,
+        role: member.role,
+      })),
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Something went wrong.' });

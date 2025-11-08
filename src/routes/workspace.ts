@@ -4,6 +4,7 @@ import {
   createWorkspace,
   getAllWorkspaces,
   getWorkspace,
+  getWorkspaceMembers,
   inviteUsers,
 } from '../controllers/workspace';
 
@@ -14,5 +15,6 @@ router.post('/create-workspace', createWorkspace);
 router.get('/get-workspace/:id', getWorkspace);
 router.post('/invite-users', inviteUsers);
 router.post('/accept-workspace-invite', acceptWorkspaceInvite);
+router.get('/get-workspace-members/:id', getWorkspaceMembers);
 
 export default router;

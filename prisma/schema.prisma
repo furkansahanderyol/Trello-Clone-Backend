@@ -19,10 +19,11 @@ model User {
   profileImage      String?
 
   boards            BoardMember[]
-  tasks             Task[]            @relation("AssignedTasks")
+
   workspaces        WorkspaceMember[]
   createdWorkspaces Workspace[]       @relation("CreatedWorkspaces")
   comments          Comment[]
+  assignedTasks     AssignedTask[]
 
   invitesSent       WorkspaceInvite[] @relation("InvitesSent")
   invitesReceived   WorkspaceInvite[] @relation("InvitesReceived")
@@ -92,10 +93,9 @@ model Task {
   dueDate      DateTime?
 
   boardId      String
-  assignedToId String?
 
-  board        Board        @relation(fields: [boardId], references: [id])
-  assignedTo   User?        @relation("AssignedTasks", fields: [assignedToId], references: [id])
+  board         Board        @relation(fields: [boardId], references: [id])
+  assignedUsers AssignedTask[]
 
   comments     Comment[]
   attachments  Attachment[]
@@ -184,4 +184,14 @@ model WorkspaceInvite {
   invitedBy     User           @relation("InvitesSent", fields: [invitedById], references: [id])
 
   notifications Notification[]
+}
+
+model AssignedTask {
+  taskId  String
+  userId  String
+  
+  task   Task  @relation(fields: [taskId], references: [id])
+  user   User  @relation(fields: [userId], references: [id])
+  
+  @@id([taskId, userId]) 
 }

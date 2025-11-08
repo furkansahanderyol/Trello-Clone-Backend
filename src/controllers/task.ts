@@ -787,3 +787,95 @@ export async function toggleTaskLabel(req: Request, res: Response) {
     res.status(500).json({ message: 'Something went wrong.' });
   }
 }
+
+export async function addMemberToTask(req: Request, res: Response) {
+  const token = req.cookies['access-token'];
+  const payload = jwt.verify(token, process.env.JWT_ACCESS_TOKEN_SECRET!) as CustomJwtPayload;
+
+  if (!token) {
+    res.status(400).json({ message: 'Invalid token.' });
+    return;
+  }
+
+  if (!payload) {
+    res.status(403).json({ message: 'Invalid or expired authorization token.' });
+    return;
+  }
+
+  const { email, taskId } = req.body;
+
+  if (!email || !taskId) {
+    res.status(400).json({ message: 'Email and Task ID are required.' });
+    return;
+  }
+
+  try {
+    const userToAssign = await prisma.user.findUnique({
+      where: { email: email },
+      select: { id: true, name: true, surname: true },
+    });
+
+    if (!userToAssign) {
+      res.status(404).json({ message: 'User not found.' });
+      return;
+    }
+
+    const assignedUserId = userToAssign.id;
+
+    const isAlreadyAssigned = await prisma.assignedTask.findUnique({
+      where: {
+        taskId_userId: {
+          taskId: taskId,
+          userId: assignedUserId,
+        },
+      },
+    });
+
+    if (isAlreadyAssigned) {
+      res.status(200).json({
+        message: `${userToAssign.name} is already assigned to this task.`,
+        task: await getUpdatedTaskData(taskId),
+      });
+
+      return;
+    }
+
+    await prisma.assignedTask.create({
+      data: {
+        taskId: taskId,
+        userId: assignedUserId,
+      },
+    });
+
+    const updatedTask = await getUpdatedTaskData(taskId);
+
+    res.status(200).json({
+      message: `${userToAssign.name} ${userToAssign.surname} has been successfully assigned to the task.`,
+      task: updatedTask,
+    });
+    return;
+  } catch (error) {
+    console.error('Something went wrong.');
+    res.status(500).json({ error: 'Something went wrong.' });
+    return;
+  }
+}
+
+async function getUpdatedTaskData(taskId: string) {
+  return prisma.task.findUnique({
+    where: { id: taskId },
+    include: {
+      assignedUsers: {
+        include: {
+          user: {
+            select: {
+              name: true,
+              surname: true,
+              profileImage: true,
+            },
+          },
+        },
+      },
+    },
+  });
+}

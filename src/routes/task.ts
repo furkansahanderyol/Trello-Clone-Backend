@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import {
+  addMemberToTask,
   createWorkspaceLabel,
   deleteTaskComment,
   deleteWorkspaceLabel,
@@ -29,5 +30,6 @@ router.patch('/edit-task-label', editWorkspaceLabel);
 router.post('/delete-task-label', deleteWorkspaceLabel);
 router.post('/get-label-status', getTaskLabelsWithStatus);
 router.post('/toggle-label-status', toggleTaskLabel);
+router.post('/add-member-to-task', addMemberToTask);
 
 export default router;
