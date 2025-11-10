@@ -71,7 +71,6 @@ export async function getTaskData(req: Request, res: Response) {
           },
         },
       },
-
       comments: {
         include: {
           author: {
@@ -86,6 +85,18 @@ export async function getTaskData(req: Request, res: Response) {
         },
         orderBy: {
           order: 'asc',
+        },
+      },
+      assignedUsers: {
+        include: {
+          user: {
+            select: {
+              name: true,
+              surname: true,
+              email: true,
+              profileImage: true,
+            },
+          },
         },
       },
     },
@@ -856,6 +867,80 @@ export async function addMemberToTask(req: Request, res: Response) {
     return;
   } catch (error) {
     console.error('Something went wrong.');
+    res.status(500).json({ error: 'Something went wrong.' });
+    return;
+  }
+}
+
+export async function getAvailableTaskMembers(req: Request, res: Response) {
+  const token = req.cookies['access-token'];
+
+  if (!token) {
+    res.status(400).json({ message: 'Invalid token.' });
+    return;
+  }
+
+  let payload: CustomJwtPayload;
+
+  try {
+    payload = jwt.verify(token, process.env.JWT_ACCESS_TOKEN_SECRET!) as CustomJwtPayload;
+  } catch (e) {
+    res.status(403).json({ message: 'Invalid or expired authorization token.' });
+    return;
+  }
+
+  const { workspaceId, taskId } = req.params;
+
+  if (!workspaceId || !taskId) {
+    res.status(400).json({ message: 'Workspace ID and Task ID are required.' });
+    return;
+  }
+
+  try {
+    const isMember = await prisma.workspaceMember.findUnique({
+      where: {
+        workspaceId_userId: {
+          workspaceId: workspaceId,
+          userId: payload.id,
+        },
+      },
+    });
+
+    const assignedUsersResult = await prisma.assignedTask.findMany({
+      where: { taskId: taskId },
+      select: { userId: true },
+    });
+
+    const assignedUserIds = assignedUsersResult.map((a) => a.userId);
+
+    const availableUsers = await prisma.workspaceMember.findMany({
+      where: {
+        workspaceId: workspaceId,
+        userId: {
+          notIn: assignedUserIds,
+        },
+      },
+      include: {
+        user: {
+          select: {
+            name: true,
+            surname: true,
+            email: true,
+            profileImage: true,
+          },
+        },
+      },
+      orderBy: {
+        user: {
+          name: 'asc',
+        },
+      },
+    });
+
+    res.status(200).json(availableUsers);
+    return;
+  } catch (error) {
+    console.error(error);
     res.status(500).json({ error: 'Something went wrong.' });
     return;
   }

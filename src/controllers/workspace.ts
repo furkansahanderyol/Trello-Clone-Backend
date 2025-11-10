@@ -291,60 +291,40 @@ export async function getWorkspaceMembers(req: Request, res: Response) {
   }
 
   try {
-    const requestingUser = await prisma.user.findUnique({
-      where: { email: payload.email },
-      select: { id: true },
-    });
-
-    if (!requestingUser) {
-      res.status(404).json({ message: 'Requesting user not found.' });
-      return;
-    }
-
-    const isMember = await prisma.workspaceMember.findUnique({
-      where: {
-        workspaceId_userId: {
-          workspaceId: id,
-          userId: requestingUser.id,
-        },
-      },
-    });
-
-    if (!isMember) {
-      res.status(403).json({ message: 'You are not authorized to view members of this workspace.' });
-      return;
-    }
-
-    const members = await prisma.workspaceMember.findMany({
+    const existingMemberIdResult = await prisma.workspaceMember.findMany({
       where: {
         workspaceId: id,
-        userId: {
-          not: requestingUser.id,
-        },
       },
-      include: {
-        user: {
-          select: {
-            name: true,
-            surname: true,
-            email: true,
-            profileImage: true,
-          },
-        },
-      },
-      orderBy: {
-        role: 'asc',
+      select: {
+        userId: true,
       },
     });
 
-    res.status(200).json({
-      members: members.map((member) => ({
-        ...member.user,
-        role: member.role,
-      })),
+    const existingMemberIds = existingMemberIdResult.map((member) => member.userId);
+
+    const otherUsers = await prisma.user.findMany({
+      where: {
+        id: {
+          notIn: existingMemberIds,
+        },
+      },
+      select: {
+        name: true,
+        surname: true,
+        email: true,
+        profileImage: true,
+      },
     });
+
+    res.status(200).json(otherUsers);
+    return;
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Something went wrong.' });
+    return;
   }
 }
+
+// TODO: Render added members on task modal
+// TODO: Ability to remove added members from task on FE and BE
+// TODO: Send notifications.

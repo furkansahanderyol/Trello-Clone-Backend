@@ -5,6 +5,7 @@ import {
   deleteTaskComment,
   deleteWorkspaceLabel,
   editWorkspaceLabel,
+  getAvailableTaskMembers,
   getTaskData,
   getTaskLabelsWithStatus,
   getWorkspaceLabels,
@@ -31,5 +32,6 @@ router.post('/delete-task-label', deleteWorkspaceLabel);
 router.post('/get-label-status', getTaskLabelsWithStatus);
 router.post('/toggle-label-status', toggleTaskLabel);
 router.post('/add-member-to-task', addMemberToTask);
+router.get('/available-task-members/:workspaceId/:taskId', getAvailableTaskMembers);
 
 export default router;
