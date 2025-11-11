@@ -16,6 +16,7 @@ import {
   uploadTaskImage,
 } from '../controllers/task';
 import tempUpload from '../middlewares/tempUpload';
+import { unassignUser } from '../controllers/workspace';
 
 const router: Router = Router();
 
@@ -33,5 +34,6 @@ router.post('/get-label-status', getTaskLabelsWithStatus);
 router.post('/toggle-label-status', toggleTaskLabel);
 router.post('/add-member-to-task', addMemberToTask);
 router.get('/available-task-members/:workspaceId/:taskId', getAvailableTaskMembers);
+router.post('/unassign-user', unassignUser);
 
 export default router;

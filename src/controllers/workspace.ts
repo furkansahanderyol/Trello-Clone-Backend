@@ -274,7 +274,7 @@ export async function getWorkspaceMembers(req: Request, res: Response) {
     return;
   }
 
-  let payload;
+  let payload: CustomJwtPayload;
 
   try {
     payload = jwt.verify(token, process.env.JWT_ACCESS_TOKEN_SECRET!) as CustomJwtPayload;
@@ -325,6 +325,102 @@ export async function getWorkspaceMembers(req: Request, res: Response) {
   }
 }
 
-// TODO: Render added members on task modal
+export async function unassignUser(req: Request, res: Response) {
+  const token = req.cookies['access-token'];
+
+  if (!token) {
+    res.status(400).json({ message: 'Invalid user.' });
+    return;
+  }
+
+  let payload: CustomJwtPayload;
+
+  try {
+    payload = jwt.verify(token, process.env.JWT_ACCESS_TOKEN_SECRET!) as CustomJwtPayload;
+  } catch (error) {
+    res.status(403).json({ message: 'Invalid or expired authorization token.' });
+    return;
+  }
+
+  const { taskId, email } = req.body;
+
+  if (!taskId || !email) {
+    res.status(400).json({ message: 'Task ID and user email are required.' });
+    return;
+  }
+
+  try {
+    const task = await prisma.task.findUnique({
+      where: {
+        id: taskId,
+      },
+      select: {
+        board: {
+          select: {
+            workspaceId: true,
+          },
+        },
+      },
+    });
+
+    if (!task || !task.board.workspaceId) {
+      res.status(404).json({ message: 'Task or associated workspace not found.' });
+      return;
+    }
+
+    const workspaceId = task.board.workspaceId;
+
+    const requestingUserRole = await prisma.workspaceMember.findUnique({
+      where: {
+        workspaceId_userId: {
+          workspaceId: workspaceId,
+          userId: payload.id,
+        },
+      },
+    });
+
+    if (requestingUserRole?.role !== 'admin') {
+      res.status(403).json({
+        message: 'Forbidden. Only administrators can unassign users from tasks.',
+      });
+      return;
+    }
+
+    const userToUnassign = await prisma.user.findUnique({
+      where: { email: email },
+      select: { id: true },
+    });
+
+    if (!userToUnassign) {
+      res.status(404).json({ message: 'User to unassign not found.' });
+      return;
+    }
+
+    const userId = userToUnassign.id;
+
+    const unassigned = await prisma.assignedTask.deleteMany({
+      where: {
+        taskId: taskId,
+        userId: userId,
+      },
+    });
+
+    if (unassigned.count === 0) {
+      res.status(404).json({ message: 'The user was not assigned to this task.' });
+      return;
+    }
+
+    res.status(200).json({
+      message: 'User successfully unassigned from the task.',
+      unassignedCount: unassigned.count,
+    });
+    return;
+  } catch (error) {
+    console.error('Error unassigning user from task:', error);
+    res.status(500).json({ error: 'An error occurred during the unassignment process.' });
+    return;
+  }
+}
+
 // TODO: Ability to remove added members from task on FE and BE
 // TODO: Send notifications.

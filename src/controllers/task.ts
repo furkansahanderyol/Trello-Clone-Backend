@@ -906,6 +906,11 @@ export async function getAvailableTaskMembers(req: Request, res: Response) {
       },
     });
 
+    if (!isMember) {
+      res.status(400).json({ message: 'User is not a member of this workspace.' });
+      return;
+    }
+
     const assignedUsersResult = await prisma.assignedTask.findMany({
       where: { taskId: taskId },
       select: { userId: true },
@@ -937,7 +942,9 @@ export async function getAvailableTaskMembers(req: Request, res: Response) {
       },
     });
 
-    res.status(200).json(availableUsers);
+    const users = availableUsers.map((user) => user.user);
+
+    res.status(200).json(users);
     return;
   } catch (error) {
     console.error(error);
