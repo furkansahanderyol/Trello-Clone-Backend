@@ -207,7 +207,7 @@ export async function acceptWorkspaceInvite(req: Request, res: Response) {
     return;
   }
 
-  const { workspaceId, email } = req.body;
+  const { workspaceId } = req.body;
 
   if (!workspaceId) {
     res.status(400).json({ message: 'Missing workspace ID.' });
@@ -421,6 +421,3 @@ export async function unassignUser(req: Request, res: Response) {
     return;
   }
 }
-
-// TODO: Ability to remove added members from task on FE and BE
-// TODO: Send notifications.
