@@ -470,16 +470,68 @@ export async function getUserNotifications(req: Request, res: Response) {
     const notifications = await prisma.notification.findMany({
       where: {
         userId: userId,
-        read: false,
       },
       orderBy: {
         createdAt: 'desc',
       },
     });
 
-    res.status(200).json({ count: notifications.length, notifications });
+    const unreadCount = await prisma.notification.count({
+      where: {
+        userId: userId,
+        read: false,
+      },
+    });
+
+    res.status(200).json({ count: unreadCount, notifications });
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: 'Internal server error.' });
+  }
+}
+
+export async function markNotificationAsRead(req: Request, res: Response) {
+  const token = req.cookies['access-token'];
+
+  if (!token) {
+    res.status(400).json({ message: 'Invalid token.' });
+    return;
+  }
+
+  let payload: CustomJwtPayload;
+
+  try {
+    payload = jwt.verify(token, process.env.JWT_ACCESS_TOKEN_SECRET!) as CustomJwtPayload;
+  } catch (e) {
+    res.status(403).json({ message: 'Invalid or expired authorization token.' });
+    return;
+  }
+
+  const notificationId = req.params.notificationId;
+  const requestingUserId = payload.id;
+
+  if (!notificationId) {
+    res.status(400).json({ message: 'Notification ID is required.' });
+    return;
+  }
+
+  try {
+    await prisma.notification.updateMany({
+      where: {
+        id: notificationId,
+        userId: requestingUserId,
+        read: false,
+      },
+      data: {
+        read: true,
+      },
+    });
+
+    res.status(200).json({ message: 'Notification successfully marked as read.' });
+    return;
+  } catch (error) {
+    console.error('Error marking notification as read:', error);
+    res.status(500).json({ error: 'Something went wrong.' });
+    return;
   }
 }

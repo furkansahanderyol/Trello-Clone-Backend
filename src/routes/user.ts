@@ -7,6 +7,7 @@ import {
   getUserNotifications,
   login,
   logout,
+  markNotificationAsRead,
   register,
   registerSuccess,
   resendVerificationCode,
@@ -29,6 +30,7 @@ router.get('/get-user', getUser);
 router.post('/change-password', changePassword);
 router.post('/search-user', searchUser);
 router.get('/user-notifications', getUserNotifications);
+router.patch('/notifications/read/:notificationId', markNotificationAsRead);
 
 // Sends user to the select their mail.
 router.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
