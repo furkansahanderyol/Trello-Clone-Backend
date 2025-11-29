@@ -113,15 +113,61 @@ export async function getWorkspace(req: Request, res: Response) {
     return;
   }
 
+  let payload: CustomJwtPayload;
+  try {
+    payload = jwt.verify(token, process.env.JWT_ACCESS_TOKEN_SECRET!) as CustomJwtPayload;
+  } catch (error) {
+    res.status(403).json({ message: 'Invalid or expired authorization token.' });
+    return;
+  }
+
   const workspaceData = await prisma.workspace.findUnique({
     where: { id: id },
+    include: {
+      members: {
+        include: {
+          user: {
+            select: {
+              name: true,
+              surname: true,
+              email: true,
+              profileImage: true,
+            },
+          },
+        },
+        orderBy: {
+          user: {
+            name: 'asc',
+          },
+        },
+      },
+    },
   });
 
   if (!workspaceData) {
     res.status(404).json({ message: 'Workspace cannot found.' });
   }
 
-  res.status(200).json(workspaceData);
+  const cleanedMembers = workspaceData?.members.map((member) => {
+    return {
+      role: member.role,
+      name: member.user.name,
+      surname: member.user.surname,
+      profileImage: member.user.profileImage,
+      email: member.user.email,
+    };
+  });
+
+  const finalResponse = {
+    id: workspaceData?.id,
+    name: workspaceData?.name,
+    color: workspaceData?.color,
+    createdAt: workspaceData?.createdAt,
+    cratedBy: workspaceData?.createdBy,
+    members: cleanedMembers,
+  };
+
+  res.status(200).json(finalResponse);
   return;
 }
 
@@ -418,6 +464,82 @@ export async function unassignUser(req: Request, res: Response) {
   } catch (error) {
     console.error('Error unassigning user from task:', error);
     res.status(500).json({ error: 'An error occurred during the unassignment process.' });
+    return;
+  }
+}
+
+export async function removeWorkspaceMember(req: Request, res: Response) {
+  const token = req.cookies['access-token'];
+
+  if (!token) {
+    res.status(400).json({ message: 'Invalid token.' });
+    return;
+  }
+
+  let payload: CustomJwtPayload;
+  try {
+    payload = jwt.verify(token, process.env.JWT_ACCESS_TOKEN_SECRET!) as CustomJwtPayload;
+  } catch (e) {
+    res.status(403).json({ message: 'Invalid or expired authorization token.' });
+    return;
+  }
+
+  const { workspaceId, email } = req.body;
+  const requestingUserId = payload.id;
+
+  if (!workspaceId || !email) {
+    res.status(400).json({ message: 'Workspace ID and user email are required.' });
+    return;
+  }
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { email: email },
+      select: { id: true },
+    });
+
+    if (!user) {
+      res.status(404).json({ message: 'User not found.' });
+      return;
+    }
+
+    if (user.id === requestingUserId) {
+      res.status(403).json({ message: 'You cannot remove yourself from the workspace.' });
+      return;
+    }
+
+    const requestingUserRole = await prisma.workspaceMember.findUnique({
+      where: {
+        workspaceId_userId: {
+          workspaceId: workspaceId,
+          userId: requestingUserId,
+        },
+      },
+      select: {
+        role: true,
+      },
+    });
+
+    if (requestingUserRole?.role !== 'admin') {
+      res.status(403).json({
+        message: 'Only admins can remove members from workspace.',
+      });
+    }
+
+    await prisma.workspaceMember.delete({
+      where: {
+        workspaceId_userId: {
+          workspaceId: workspaceId,
+          userId: user.id,
+        },
+      },
+    });
+
+    res.status(200).json({ message: 'User successfully removed from the workspace.' });
+    return;
+  } catch (error) {
+    console.error('Something went wong:', error);
+    res.status(500).json({ error: 'An error occurred during the removing process.' });
     return;
   }
 }
