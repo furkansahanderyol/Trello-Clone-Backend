@@ -147,6 +147,12 @@ export async function getWorkspace(req: Request, res: Response) {
     res.status(404).json({ message: 'Workspace cannot found.' });
   }
 
+  const requestingUserId = payload.id;
+
+  const currentUserMemberRecord = workspaceData?.members.find((member) => member.userId === requestingUserId);
+
+  const isAdmin = currentUserMemberRecord?.role === 'admin';
+
   const cleanedMembers = workspaceData?.members.map((member) => {
     return {
       role: member.role,
@@ -164,6 +170,7 @@ export async function getWorkspace(req: Request, res: Response) {
     createdAt: workspaceData?.createdAt,
     cratedBy: workspaceData?.createdBy,
     members: cleanedMembers,
+    isAdmin: isAdmin,
   };
 
   res.status(200).json(finalResponse);
