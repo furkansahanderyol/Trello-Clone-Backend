@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { userService } from '../services/userService';
 import { userSchema } from '../schemas/userSchema';
-import { PrismaClient, User } from '@prisma/client';
+import { User } from '@prisma/client';
 import { generateCode } from '../helpers/generateCode';
 import nodemailer from 'nodemailer';
 import redis, { redisClient } from '../lib/redis';
@@ -10,8 +10,7 @@ import { generateToken } from '../lib/generateToken';
 import jwt from 'jsonwebtoken';
 import { changePasswordSchema } from '../schemas/changePasswordSchema';
 import { setTokenCookie } from '../helpers/setTokenCookie';
-
-const prisma = new PrismaClient();
+import { prisma } from '../lib/prisma';
 
 interface CustomJwtPayload extends jwt.JwtPayload {
   id: string;

@@ -36,7 +36,7 @@
     "typescript-eslint": "^8.28.0"
   },
   "dependencies": {
-    "@prisma/client": "^6.6.0",
+    "@prisma/client": "^6.2.1",
     "@types/cookie-parser": "^1.4.8",
     "@types/jsonwebtoken": "^9.0.9",
     "@types/multer": "^1.4.13",
@@ -56,7 +56,7 @@
     "nodemon": "^3.1.9",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
-    "prisma": "^6.6.0",
+    "prisma": "^6.2.1",
     "redis": "^5.5.5",
     "socket.io": "^4.8.1",
     "zod": "^3.24.2"

@@ -2,8 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { workspaceService } from '../services/workspaceService';
-
-const prisma = new PrismaClient();
+import { prisma } from '../lib/prisma';
 
 interface CustomJwtPayload extends jwt.JwtPayload {
   email: string;

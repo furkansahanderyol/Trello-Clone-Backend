@@ -1,7 +1,5 @@
-import { PrismaClient } from '@prisma/client';
 import { io, userSockets } from '..';
-
-const prisma = new PrismaClient();
+import { prisma } from '../../lib/prisma';
 
 export async function inviteUsers(users: string) {
   const parsedUsers = JSON.parse(users) as { email: string }[];

@@ -1,5 +1,7 @@
+import dotenv from 'dotenv';
 import Redis from 'ioredis';
 import { createClient, RedisClientType } from 'redis';
+dotenv.config();
 
 const redis = new Redis({
   host: 'localhost',

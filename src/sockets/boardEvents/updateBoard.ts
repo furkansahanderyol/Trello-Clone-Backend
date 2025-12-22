@@ -1,7 +1,5 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../../lib/prisma';
 import { io } from '../index';
-
-const prisma = new PrismaClient();
 
 export async function updateBoard(message: string) {
   const parsedMessage = JSON.parse(message);

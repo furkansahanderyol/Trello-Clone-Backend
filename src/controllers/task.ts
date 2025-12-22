@@ -3,15 +3,13 @@ import jwt from 'jsonwebtoken';
 import fs from 'fs';
 import path from 'path';
 import { changeFileLocation } from '../helpers/changeFileLocation';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 
 interface CustomJwtPayload extends jwt.JwtPayload {
   id: string;
   email: string;
   isVerified: boolean;
 }
-
-const prisma = new PrismaClient();
 
 export async function getTaskData(req: Request, res: Response) {
   const token = req.cookies['access-token'];

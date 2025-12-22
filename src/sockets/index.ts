@@ -3,13 +3,11 @@ import http from 'http';
 import { updateBoard } from './boardEvents/updateBoard';
 import { inviteUsers } from './workspaceEvents/inviteUsers';
 import jwt, { JwtPayload } from 'jsonwebtoken';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 
 export let io: Server;
 
 export const userSockets = new Map<string, string>();
-
-const prisma = new PrismaClient();
 
 export default function setupWebSocketServer(server: http.Server) {
   io = new Server(server, {
