@@ -549,3 +549,52 @@ export async function removeWorkspaceMember(req: Request, res: Response) {
     return;
   }
 }
+
+export async function deleteWorkspace(req: Request, res: Response) {
+  const token = req.cookies['access-token'];
+
+  if (!token) {
+    res.status(400).json({ message: 'Invalid token.' });
+    return;
+  }
+
+  let payload: CustomJwtPayload;
+  try {
+    payload = jwt.verify(token, process.env.JWT_ACCESS_TOKEN_SECRET!) as CustomJwtPayload;
+  } catch (e) {
+    res.status(403).json({ message: 'Invalid or expired authorization token.' });
+    return;
+  }
+
+  const { id: workspaceId } = req.params;
+  const userId = payload.id;
+
+  try {
+    const memberRecord = await prisma.workspaceMember.findUnique({
+      where: {
+        workspaceId_userId: {
+          workspaceId: workspaceId,
+          userId: userId,
+        },
+      },
+    });
+
+    if (!memberRecord || memberRecord.role !== 'admin') {
+      res.status(403).json({
+        message: 'You do not have a permission to delete this workspace.',
+      });
+      return;
+    }
+
+    await prisma.workspace.delete({
+      where: { id: workspaceId },
+    });
+
+    res.status(200).json({ message: 'Workspace deleted.' });
+    return;
+  } catch (error) {
+    console.error('Workspace deletion error', error);
+    res.status(500).json({ error: 'Something went wrong.' });
+    return;
+  }
+}

@@ -30,6 +30,8 @@ model User {
 
   notifications     Notification[]    @relation("UserNotifications")      
   sentNotifications Notification[]    @relation("SentNotifications")      
+
+ 
 }
 
 model Workspace {
@@ -53,7 +55,7 @@ model WorkspaceMember {
   userId      String
   role        String    @default("member")
 
-  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   user        User      @relation(fields: [userId], references: [id])
 
   @@unique([workspaceId, userId])
@@ -66,7 +68,7 @@ model Board {
   order       Int
   workspaceId String
 
-  workspace   Workspace     @relation(fields: [workspaceId], references: [id])
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   members     BoardMember[]
   tasks       Task[]
 }
@@ -78,7 +80,7 @@ model BoardMember {
   role    String @default("member")
 
   user    User   @relation(fields: [userId], references: [id])
-  board   Board  @relation(fields: [boardId], references: [id])
+  board  Board @relation(fields: [boardId], references: [id], onDelete: Cascade)
 
   @@unique([userId, boardId])
 }
@@ -94,7 +96,7 @@ model Task {
 
   boardId      String
 
-  board         Board        @relation(fields: [boardId], references: [id])
+ board  Board @relation(fields: [boardId], references: [id], onDelete: Cascade)
   assignedUsers AssignedTask[]
 
   comments     Comment[]
@@ -111,7 +113,7 @@ model Comment {
   taskId    String
   authorId  String
 
-  task      Task     @relation(fields: [taskId], references: [id])
+  task   Task  @relation(fields: [taskId], references: [id], onDelete: Cascade)
   author    User     @relation(fields: [authorId], references: [id])
 }
 
@@ -122,7 +124,7 @@ model Attachment {
   createdAt DateTime @default(now())
 
   taskId    String
-  task      Task     @relation(fields: [taskId], references: [id])
+  task   Task  @relation(fields: [taskId], references: [id], onDelete: Cascade)
 }
 
 model Label {
@@ -132,7 +134,7 @@ model Label {
   workspaceId String
   order       Int         @default(0)
 
-  workspace   Workspace   @relation(fields: [workspaceId], references: [id])
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   tasks       TaskLabel[]
 }
 
@@ -142,8 +144,8 @@ model TaskLabel {
   isActive Boolean @default(false)
   order    Int     @default(0)
 
-  task     Task    @relation(fields: [taskId], references: [id])
-  label    Label   @relation(fields: [labelId], references: [id])
+  task   Task  @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  label  Label @relation(fields: [labelId], references: [id], onDelete: Cascade)
 
   @@id([taskId, labelId])
 }
@@ -168,7 +170,7 @@ model Notification {
   user               User             @relation("UserNotifications", fields: [userId], references: [id])
   sender             User?            @relation("SentNotifications", fields: [senderId], references: [id])
   invite             WorkspaceInvite? @relation(fields: [inviteId], references: [id])
-  workspace          Workspace?       @relation(fields: [workspaceId], references: [id])
+  workspace   Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 }
 
 model WorkspaceInvite {
@@ -179,7 +181,7 @@ model WorkspaceInvite {
   status        String         @default("pending")
   createdAt     DateTime       @default(now())
 
-  workspace     Workspace      @relation(fields: [workspaceId], references: [id])
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   invitedUser   User           @relation("InvitesReceived", fields: [invitedUserId], references: [id])
   invitedBy     User           @relation("InvitesSent", fields: [invitedById], references: [id])
 
@@ -190,7 +192,7 @@ model AssignedTask {
   taskId  String
   userId  String
   
-  task   Task  @relation(fields: [taskId], references: [id])
+  task   Task  @relation(fields: [taskId], references: [id], onDelete: Cascade)
   user   User  @relation(fields: [userId], references: [id])
   
   @@id([taskId, userId]) 
