@@ -1,8 +1,8 @@
-import { PrismaClient } from '@prisma/client';
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { workspaceService } from '../services/workspaceService';
 import { prisma } from '../lib/prisma';
+import { io } from '../sockets';
 
 interface CustomJwtPayload extends jwt.JwtPayload {
   email: string;
@@ -589,6 +589,13 @@ export async function deleteWorkspace(req: Request, res: Response) {
     await prisma.workspace.delete({
       where: { id: workspaceId },
     });
+
+    if (io) {
+      io.to(workspaceId).emit('workspace_deleted', {
+        message: 'This workspace deleted.',
+      });
+      io.in(workspaceId).socketsLeave(workspaceId);
+    }
 
     res.status(200).json({ message: 'Workspace deleted.' });
     return;
