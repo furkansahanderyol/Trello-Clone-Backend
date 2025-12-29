@@ -592,6 +592,7 @@ export async function deleteWorkspace(req: Request, res: Response) {
 
     if (io) {
       io.to(workspaceId).emit('workspace_deleted', {
+        workspaceId: workspaceId,
         message: 'This workspace deleted.',
       });
       io.in(workspaceId).socketsLeave(workspaceId);

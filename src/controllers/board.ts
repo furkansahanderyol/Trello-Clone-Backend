@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../lib/prisma';
+import { broadcastBoardUpdate } from '../services/socketService';
 
 interface IncomingTask {
   id: string;
@@ -144,6 +145,7 @@ export async function createBoard(req: Request, res: Response) {
       data: { ...newBoard },
     });
 
+    await broadcastBoardUpdate(workspaceId);
     res.status(200).json({ message: 'Board created successfully.' });
   } catch (error) {
     console.error(error);
@@ -303,6 +305,8 @@ export async function updateBoardTasks(req: Request, res: Response) {
       ]);
     }
 
+    await broadcastBoardUpdate(workspaceId);
+
     res.status(200).json({ message: 'Task moved and reordered successfully.' });
     return;
   } catch (error) {
@@ -364,6 +368,8 @@ export async function updateBoardOrders(req: Request, res: Response) {
       ),
     );
 
+    await broadcastBoardUpdate(workspaceId);
+
     res.status(200).json({ message: 'Board order updated successfully.' });
     return;
   } catch (error) {
@@ -422,6 +428,7 @@ export async function addTask(req: Request, res: Response) {
         order: nextOrder,
       },
     });
+
     res.status(200).json({ message: 'Board updated.' });
     return;
   } catch (error) {
