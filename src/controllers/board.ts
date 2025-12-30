@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../lib/prisma';
 import { broadcastBoardUpdate } from '../services/socketService';
+import { io } from '../sockets';
 
 interface IncomingTask {
   id: string;
@@ -440,35 +441,38 @@ export async function addTask(req: Request, res: Response) {
 
 export async function updateTaskName(req: Request, res: Response) {
   const token = req.cookies['access-token'];
-  const payload = jwt.verify(token, process.env.JWT_ACCESS_TOKEN_SECRET!);
 
-  const { title, id } = req.body;
+  const { workspaceId, title, id } = req.body;
 
   if (!token) {
     res.status(400).json({ message: 'Invalid token.' });
     return;
   }
 
-  if (!payload) {
-    res.status(403).json({ message: 'Invalid or expired authorization token.' });
-    return;
-  }
-
-  if (title.length <= 0) {
-    res.status(400).json({ message: 'Title must be provided.' });
-    return;
-  }
-
-  if (!id) {
-    res.status(400).json({ message: 'Task cannot be found.' });
-    return;
-  }
-
   try {
-    await prisma.task.update({
+    const payload = jwt.verify(token, process.env.JWT_ACCESS_TOKEN_SECRET!);
+
+    if (!payload) {
+      res.status(403).json({ message: 'Invalid or expired authorization token.' });
+      return;
+    }
+
+    if (title.length <= 0) {
+      res.status(400).json({ message: 'Title must be provided.' });
+      return;
+    }
+
+    if (!id) {
+      res.status(400).json({ message: 'Task cannot be found.' });
+      return;
+    }
+
+    const updatedTask = await prisma.task.update({
       where: { id: id },
       data: { title },
     });
+
+    io.to(workspaceId).emit('task_name_updated', updatedTask);
 
     res.status(200).json({ message: 'Task title updated successfully.' });
     return;
