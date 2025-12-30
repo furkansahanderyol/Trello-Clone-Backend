@@ -383,7 +383,7 @@ export async function addTask(req: Request, res: Response) {
   const token = req.cookies['access-token'];
   const payload = jwt.verify(token, process.env.JWT_ACCESS_TOKEN_SECRET!);
 
-  const { title, boardId, user } = req.body;
+  const { workspaceId, title, boardId, user } = req.body;
 
   if (!token) {
     res.status(400).json({ message: 'Invalid token.' });
@@ -422,13 +422,15 @@ export async function addTask(req: Request, res: Response) {
 
     const nextOrder = lastTask ? lastTask.order + 1 : 0;
 
-    await prisma.task.create({
+    const newTask = await prisma.task.create({
       data: {
         title: title,
         boardId: boardId,
         order: nextOrder,
       },
     });
+
+    io.to(workspaceId).emit('task_created', newTask);
 
     res.status(200).json({ message: 'Board updated.' });
     return;
