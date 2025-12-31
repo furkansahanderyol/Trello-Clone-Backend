@@ -1,7 +1,5 @@
 import { Server } from 'socket.io';
 import http from 'http';
-import { updateBoard } from './boardEvents/updateBoard';
-import { inviteUsers } from './workspaceEvents/inviteUsers';
 import jwt, { JwtPayload } from 'jsonwebtoken';
 import { prisma } from '../lib/prisma';
 
@@ -87,8 +85,5 @@ export default function setupWebSocketServer(server: http.Server) {
         console.warn(`Unauthorized attempt by ${userEmail} to join room: ${workspaceId}`);
       }
     });
-
-    socket.on('update_board', updateBoard);
-    socket.on('invite_users', inviteUsers);
   });
 }
