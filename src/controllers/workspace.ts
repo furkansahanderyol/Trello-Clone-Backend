@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { workspaceService } from '../services/workspaceService';
 import { prisma } from '../lib/prisma';
-import { io } from '../sockets';
+import { io, userSockets } from '../sockets';
 
 interface CustomJwtPayload extends jwt.JwtPayload {
   email: string;
@@ -570,19 +570,15 @@ export async function deleteWorkspace(req: Request, res: Response) {
   const userId = payload.id;
 
   try {
-    const memberRecord = await prisma.workspaceMember.findUnique({
-      where: {
-        workspaceId_userId: {
-          workspaceId: workspaceId,
-          userId: userId,
-        },
-      },
+    const members = await prisma.workspaceMember.findMany({
+      where: { workspaceId: workspaceId },
+      include: { user: { select: { email: true } } },
     });
 
-    if (!memberRecord || memberRecord.role !== 'admin') {
-      res.status(403).json({
-        message: 'You do not have a permission to delete this workspace.',
-      });
+    const isAdmin = members.find((member) => member.role === 'admin' && member.userId === userId);
+
+    if (!isAdmin) {
+      res.status(403).json({ message: 'You do not have permission.' });
       return;
     }
 
@@ -596,6 +592,16 @@ export async function deleteWorkspace(req: Request, res: Response) {
         message: 'This workspace deleted.',
       });
       io.in(workspaceId).socketsLeave(workspaceId);
+
+      members.forEach((member) => {
+        const socketId = userSockets.get(member.user.email);
+        if (socketId) {
+          io.to(socketId).emit('workspace_list_updated', {
+            action: 'remove',
+            workspaceId,
+          });
+        }
+      });
     }
 
     res.status(200).json({ message: 'Workspace deleted.' });
