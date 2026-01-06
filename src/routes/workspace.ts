@@ -3,6 +3,7 @@ import {
   acceptWorkspaceInvite,
   createWorkspace,
   deleteWorkspace,
+  editWorkspace,
   getAllWorkspaces,
   getWorkspace,
   getWorkspaceMembers,
@@ -20,5 +21,6 @@ router.post('/accept-workspace-invite', acceptWorkspaceInvite);
 router.get('/get-workspace-members/:id', getWorkspaceMembers);
 router.post('/remove-workspace-member', removeWorkspaceMember);
 router.delete('/workspace-delete/:id', deleteWorkspace);
+router.patch('/workspace-edit/:id', editWorkspace);
 
 export default router;

@@ -612,3 +612,62 @@ export async function deleteWorkspace(req: Request, res: Response) {
     return;
   }
 }
+
+export async function editWorkspace(req: Request, res: Response) {
+  const token = req.cookies['access-token'];
+
+  if (!token) {
+    res.status(400).json({ message: 'Invalid token.' });
+    return;
+  }
+
+  let payload: CustomJwtPayload;
+  try {
+    payload = jwt.verify(token, process.env.JWT_ACCESS_TOKEN_SECRET!) as CustomJwtPayload;
+  } catch (e) {
+    res.status(403).json({ message: 'Invalid or expired authorization token.' });
+    return;
+  }
+
+  const { id: workspaceId } = req.params;
+  const { name } = req.body;
+  const userId = payload.id;
+
+  if (!name || name.trim().length === 0) {
+    res.status(400).json({ message: 'Workspace name cannot be empty.' });
+    return;
+  }
+
+  try {
+    const memberRecord = await prisma.workspaceMember.findUnique({
+      where: {
+        workspaceId_userId: {
+          workspaceId: workspaceId,
+          userId: userId,
+        },
+      },
+    });
+
+    if (!memberRecord || memberRecord.role !== 'admin') {
+      res.status(403).json({ message: 'Only admins can edit workspace settings.' });
+      return;
+    }
+
+    const updatedWorkspace = await prisma.workspace.update({
+      where: { id: workspaceId },
+      data: { name: name.trim() },
+    });
+
+    if (io) {
+      io.to(workspaceId).emit('workspace_updated', updatedWorkspace);
+    }
+
+    res.status(200).json({
+      message: 'Workspace updated successfully.',
+      workspace: updatedWorkspace,
+    });
+  } catch (error) {
+    console.error('Edit Workspace Error:', error);
+    res.status(500).json({ message: 'Something went wrong while updating the workspace.' });
+  }
+}
