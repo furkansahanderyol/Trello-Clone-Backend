@@ -630,7 +630,7 @@ export async function editWorkspace(req: Request, res: Response) {
   }
 
   const { id: workspaceId } = req.params;
-  const { name } = req.body;
+  const { name, selectedColor } = req.body;
   const userId = payload.id;
 
   if (!name || name.trim().length === 0) {
@@ -655,7 +655,7 @@ export async function editWorkspace(req: Request, res: Response) {
 
     const updatedWorkspace = await prisma.workspace.update({
       where: { id: workspaceId },
-      data: { name: name.trim() },
+      data: { name: name.trim(), color: selectedColor },
     });
 
     if (io) {
