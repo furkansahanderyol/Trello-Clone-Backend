@@ -14,13 +14,10 @@ interface IncomingTask {
   assignedToId: string | null;
 }
 
-interface IncomingBoard {
+interface CustomJwtPayload extends jwt.JwtPayload {
   id: string;
-  title: string;
-  createdAt: string;
-  order: number;
-  workspaceId: string;
-  tasks: IncomingTask[];
+  email: string;
+  isVerified: boolean;
 }
 
 export async function getAllBoards(req: Request, res: Response) {
@@ -477,6 +474,74 @@ export async function updateTaskName(req: Request, res: Response) {
     io.to(workspaceId).emit('task_name_updated', updatedTask);
 
     res.status(200).json({ message: 'Task title updated successfully.' });
+    return;
+  } catch (error) {
+    console.error(error);
+    res.status(400).json({ error: error });
+    return;
+  }
+}
+
+export async function editBoardName(req: Request, res: Response) {
+  const token = req.cookies['access-token'];
+
+  const { workspaceId, boardId, newBoardName } = req.body;
+
+  if (!token) {
+    res.status(400).json({ message: 'Invalid token.' });
+    return;
+  }
+
+  try {
+    const payload = jwt.verify(token, process.env.JWT_ACCESS_TOKEN_SECRET!) as CustomJwtPayload;
+
+    if (!payload) {
+      res.status(403).json({ message: 'Invalid or expired authorization token.' });
+      return;
+    }
+
+    if (newBoardName.trim().length <= 0 || !newBoardName) {
+      res.status(400).json({ message: 'Board name must be provided.' });
+      return;
+    }
+
+    if (!boardId) {
+      res.status(400).json({ message: 'Board cannot be found.' });
+      return;
+    }
+
+    const member = await prisma.workspaceMember.findFirst({
+      where: {
+        workspaceId: workspaceId,
+        user: {
+          email: payload.email,
+        },
+        role: 'admin',
+      },
+    });
+
+    if (!member) {
+      res.status(403).json({ message: 'You are not authorized for this action.' });
+      return;
+    }
+
+    await prisma.board.update({
+      where: {
+        workspaceId: workspaceId,
+        id: boardId,
+      },
+      data: {
+        title: newBoardName.trim(),
+      },
+    });
+
+    io.to(workspaceId).emit('board_name_updated', {
+      workspaceId,
+      boardId,
+      newBoardName,
+    });
+
+    res.status(200).json({ message: 'Board name updated successfully.' });
     return;
   } catch (error) {
     console.error(error);
