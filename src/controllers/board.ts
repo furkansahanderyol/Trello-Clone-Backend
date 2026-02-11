@@ -549,3 +549,60 @@ export async function editBoardName(req: Request, res: Response) {
     return;
   }
 }
+
+export async function deleteBoard(req: Request, res: Response) {
+  const token = req.cookies['access-token'];
+
+  if (!token) {
+    res.status(400).json({ message: 'Invalid token.' });
+    return;
+  }
+
+  try {
+    const payload = jwt.verify(token, process.env.JWT_ACCESS_TOKEN_SECRET!) as CustomJwtPayload;
+
+    if (!payload || !payload.email) {
+      res.status(403).json({ message: 'Invalid or expired authorization token.' });
+      return;
+    }
+
+    const { workspaceId, boardId } = req.params;
+
+    if (!workspaceId || !boardId) {
+      res.status(400).json({ message: 'Workspace and board information must be provided.' });
+      return;
+    }
+
+    const member = await prisma.workspaceMember.findFirst({
+      where: {
+        workspaceId: workspaceId,
+        user: { email: payload.email },
+        role: 'admin',
+      },
+    });
+
+    if (!member) {
+      res.status(403).json({ message: 'You are not authorized.' });
+      return;
+    }
+
+    await prisma.board.delete({
+      where: {
+        id: boardId,
+        workspaceId: workspaceId,
+      },
+    });
+
+    io.to(workspaceId).emit('board_deleted', {
+      workspaceId,
+      boardId,
+    });
+
+    res.status(200).json({ message: 'Board deleted successfully.' });
+    return;
+  } catch (error) {
+    console.error(error);
+    res.status(400).json({ error: error });
+    return;
+  }
+}

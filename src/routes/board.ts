@@ -2,6 +2,7 @@ import { Router } from 'express';
 import {
   addTask,
   createBoard,
+  deleteBoard,
   editBoardName,
   getAllBoards,
   updateBoardOrders,
@@ -18,5 +19,6 @@ router.patch('/update-board-orders', updateBoardOrders);
 router.post('/add-task', addTask);
 router.patch('/update-task', updateTaskName);
 router.patch('/edit-board-name', editBoardName);
+router.delete('/delete-board/:workspaceId/:boardId', deleteBoard);
 
 export default router;
