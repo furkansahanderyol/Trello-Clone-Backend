@@ -2,6 +2,7 @@ import { Router } from 'express';
 import {
   addMemberToTask,
   createWorkspaceLabel,
+  deleteTask,
   deleteTaskComment,
   deleteWorkspaceLabel,
   editWorkspaceLabel,
@@ -35,5 +36,6 @@ router.post('/toggle-label-status', toggleTaskLabel);
 router.post('/add-member-to-task', addMemberToTask);
 router.get('/available-task-members/:workspaceId/:taskId', getAvailableTaskMembers);
 router.post('/unassign-user', unassignUser);
+router.delete('/delete-task/:workspaceId/:boardId/:taskId', deleteTask);
 
 export default router;

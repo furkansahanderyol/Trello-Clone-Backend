@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { changeFileLocation } from '../helpers/changeFileLocation';
 import { prisma } from '../lib/prisma';
+import { io } from '../sockets';
 
 interface CustomJwtPayload extends jwt.JwtPayload {
   id: string;
@@ -948,6 +949,64 @@ export async function getAvailableTaskMembers(req: Request, res: Response) {
     console.error(error);
     res.status(500).json({ error: 'Something went wrong.' });
     return;
+  }
+}
+
+export async function deleteTask(req: Request, res: Response) {
+  const token = req.cookies['access-token'];
+
+  if (!token) {
+    res.status(400).json({ message: 'Invalid token.' });
+    return;
+  }
+
+  let payload: CustomJwtPayload;
+
+  try {
+    payload = jwt.verify(token, process.env.JWT_ACCESS_TOKEN_SECRET!) as CustomJwtPayload;
+  } catch (e) {
+    res.status(403).json({ message: 'Invalid or expired authorization token.' });
+    return;
+  }
+
+  const { workspaceId, boardId, taskId } = req.params;
+
+  if (!workspaceId || !boardId || !taskId) {
+    res.status(400).json({ message: 'Missing required information.' });
+    return;
+  }
+
+  try {
+    const member = await prisma.workspaceMember.findFirst({
+      where: {
+        workspaceId: workspaceId,
+        user: { email: payload.email },
+        role: 'admin',
+      },
+    });
+
+    if (!member) {
+      res.status(400).json({ message: 'You do not have a permission.' });
+      return;
+    }
+
+    await prisma.task.delete({
+      where: {
+        id: taskId,
+        boardId: boardId,
+      },
+    });
+
+    io.to(workspaceId).emit('task_deleted', {
+      boardId,
+      taskId,
+    });
+
+    res.status(200).json({ message: 'Task deleted successfully.' });
+    return;
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Something went wrong.' });
   }
 }
 
